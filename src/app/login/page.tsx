@@ -201,6 +201,7 @@ const handlePhongChange = (value: string) => {
               <Select
                 style={{ width: "100%" }}
                 allowClear
+                value={selectedSo}
                 showSearch
                 filterOption={(input, option) =>
                   (option?.label as string)
