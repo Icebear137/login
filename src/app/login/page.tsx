@@ -3,6 +3,8 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { Select, Space, Input, Button } from "antd";
 import { useRouter } from 'next/navigation';
+import Image from "next/image";
+import { BsTelephoneFill } from "react-icons/bs";
 
 const take = 10; // Số trường hiển thị mỗi lần
 let schoolData: any[] = []; // Lưu dữ liệu gốc
@@ -72,6 +74,13 @@ const handlePhongChange = (value: string) => {
   setDisplaySchools(filteredSchools.slice(0, take));
 };
 
+  const handleLoadMore = () => {
+    const nextSkip = skip + take;
+    const nextBatch = schools.slice(nextSkip, nextSkip + take);
+    setDisplaySchools([...displaySchools, ...nextBatch]);
+    setSkip(nextSkip);
+  };
+
   const handleLogin = async () => {
     if (!username || !password || !selectedSchool) {
       console.error("Vui lòng nhập đầy đủ thông tin đăng nhập");
@@ -109,16 +118,60 @@ const handlePhongChange = (value: string) => {
 
 
   return (
-    <div className="login-page h-screen flex m-auto bg-gray-100">
+    <div className="login-page h-screen flex m-auto bg-gray-100 relative">
       <div
-        className="img-info flex-1/3"
+        className="img-info flex-1/3 p-[30px]"
         style={{
           backgroundImage:
             'url("https://devcms.thuvien.edu.vn/images/img-bg-login.png")',
           backgroundSize: "cover",
         }}
-      ></div>
+      >
+        <div className="flex flex-col h-full p-[50px] gap-[20px]">
+          <div className="flex items-center gap-2">
+            <Image
+              src="https://devcms.thuvien.edu.vn/images/img-library.svg"
+              width={70}
+              height={70}
+              alt="Logo"
+              className="bg-white p-2 rounded"
+            />
+            <span className="text-white">eNetLibrary</span>
+          </div>
+
+          <div className="mt-8 flex flex-wrap">
+            <p className="text-white text-4xl font-bold mb-4">Hệ thống</p>
+            <span className="text-[#32C36C] text-4xl font-bold mb-4 ml-[10px]">
+              Thư viện điện tử{" "}
+            </span>
+            <p className="text-white text-4xl font-bold mb-4">trường học</p>
+          </div>
+          <div>
+            <p className="text-white text-lg">
+              Quản lý các tài liệu, bài giảng, hoạt động, hình ảnh của trường
+              thông qua các tài liệu dạng Video, hình ảnh, audio, e-Learning.
+              Quản lý mượn sách từ hệ thống quản lý thư viện truyền thống
+            </p>
+          </div>
+          <div className="pt-[20px]">
+            <Image
+              src="https://devcms.thuvien.edu.vn/images/img-login-slide-1.svg"
+              width={400}
+              height={400}
+              alt="Logo"
+            />
+          </div>
+        </div>
+      </div>
       <div className="login flex h-full flex-2/3 items-center justify-center flex-col">
+        {/* phone number */}
+        <div className="absolute top-4 right-4 flex items-end gap-2 mb-4">
+          <BsTelephoneFill className="text-white bg-[#32C36C] rounded-full h-[40px] w-[40px] p-2" />
+          <div className="flex flex-col">
+            <p className="text-[#32C36C] text-[14px]">Hỗ trợ trực tuyến</p>
+            <p className="text-[20px] font-bold">1900 4740</p>
+          </div>
+        </div>
         <form className="form flex-center m-auto p-8 bg-white rounded shadow-md flex-col w-full max-w-md">
           <h1 className="text-2xl mb-4 text-center">THÔNG TIN ĐƠN VỊ</h1>
           <Space direction="vertical" size="middle" className="w-full">
@@ -259,6 +312,9 @@ const handlePhongChange = (value: string) => {
             </Button>
           </Space>
         </form>
+        <div className="mb-4 mt-8">
+          <span>Copy right @ 2023 QuangIch. All right reserved</span>
+        </div>
       </div>
     </div>
   );
