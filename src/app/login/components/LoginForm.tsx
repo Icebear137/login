@@ -26,11 +26,13 @@ export function LoginForm() {
     soList,
     phong,
     schools,
+    partners,
     loading,
     hasMore,
     fetchSoList,
     fetchPhongList,
     fetchSchoolList,
+    fetchPartnerList,
     debouncedSearch,
   } = useSchoolData();
 
@@ -40,19 +42,20 @@ export function LoginForm() {
   // Initial data loading
   useEffect(() => {
     fetchSoList();
-  }, [fetchSoList]);
+    fetchPartnerList();
+  }, [fetchSoList, fetchPartnerList]);
 
   // Load dependent data when selections change
   useEffect(() => {
     if (selectedSo) {
       fetchPhongList(selectedSo);
-      fetchSchoolList(selectedSo, null, 0);
+      fetchSchoolList(selectedSo, null, false);
     }
   }, [selectedSo, fetchPhongList, fetchSchoolList]);
 
   useEffect(() => {
     if (selectedSo && selectedPhong) {
-      fetchSchoolList(selectedSo, selectedPhong, 0);
+      fetchSchoolList(selectedSo, selectedPhong, false);
     }
   }, [selectedPhong, selectedSo, fetchSchoolList]);
 
@@ -67,7 +70,7 @@ export function LoginForm() {
     setSelectedSchool(null);
 
     if (value === null && selectedSo) {
-      fetchSchoolList(selectedSo, null, 0);
+      fetchSchoolList(selectedSo, null, false);
     }
   };
 
@@ -118,7 +121,7 @@ export function LoginForm() {
       </div>
       <form className="form flex-center m-auto p-8 bg-white rounded shadow-md flex-col w-full max-w-md">
         <h1 className="text-2xl mb-4 text-center">THÔNG TIN ĐƠN VỊ</h1>
-        <Space direction="vertical" size="middle" className="w-full">
+        <Space direction="vertical" size="middle" className="w-full gap-1">
           <UnitSelectors
             unitLevel={unitLevel}
             setUnitLevel={setUnitLevel}
@@ -131,6 +134,7 @@ export function LoginForm() {
             soList={soList}
             phong={phong}
             schools={schools}
+            partners={partners}
             loading={loading || isLoggingIn}
             onSearch={handleSearch}
             onSoChange={handleSoChange}

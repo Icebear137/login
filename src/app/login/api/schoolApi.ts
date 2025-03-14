@@ -25,6 +25,10 @@ export async function fetchPhongList(doetCode: string) {
   return fetchSchools({ doetCode, groupUnitCode: "03" });
 }
 
+export async function fetchPartnerList() {
+  return fetchSchools({ groupUnitCode: "05" });
+}
+
 export async function fetchSchoolList(
   doetCode: string,
   divisionCode: string | null,

@@ -14,6 +14,7 @@ interface UnitSelectorsProps {
   soList: School[];
   phong: School[];
   schools: School[];
+  partners: School[];
   loading: boolean;
   onSearch: (value: string) => void;
   onSoChange: (value: string) => void;
@@ -30,6 +31,7 @@ export function UnitSelectors({
   setSelectedSchool,
   soList,
   phong,
+  partners,
   schools,
   loading,
   onSearch,
@@ -39,7 +41,7 @@ export function UnitSelectors({
 }: UnitSelectorsProps) {
   const renderUnitOptions = () => (
     <Select
-      style={{ width: "100%" }}
+      className="w-full rounded-lg border border-gray-300 p-2 text-sm hover:border-blue-500"
       allowClear
       showSearch
       value={unitLevel}
@@ -55,7 +57,7 @@ export function UnitSelectors({
 
     return (
       <Select
-        style={{ width: "100%" }}
+        className="w-full rounded-lg border border-gray-300 p-2 text-sm hover:border-blue-500"
         allowClear
         value={selectedSo}
         showSearch
@@ -78,14 +80,14 @@ export function UnitSelectors({
 
     return (
       <Select
-        style={{ width: "100%" }}
+        className="w-full rounded-lg border border-gray-300 p-2 text-sm hover:border-blue-500"
         allowClear
         showSearch
         value={selectedPhong}
         filterOption={(input, option) =>
           (option?.label as string)?.toLowerCase().includes(input.toLowerCase())
         }
-        placeholder="Phòng (tùy chọn)"
+        placeholder="Phòng"
         options={phong.map((s) => ({
           value: s.divisionCode,
           label: s.name,
@@ -97,81 +99,79 @@ export function UnitSelectors({
   };
 
   const renderSchoolSelect = () => {
-    if (unitLevel === "04") {
-      return (
-        <Select
-          style={{ width: "100%" }}
-          allowClear
-          showSearch
-          value={selectedSchool}
-          onChange={setSelectedSchool}
-          placeholder="Trường"
-          options={schools.map((s) => ({
-            value: s.id.toString(),
-            label: s.name,
-          }))}
-          onSearch={onSearch}
-          onPopupScroll={(e) => {
-            const { target } = e;
-            const div = target as HTMLDivElement;
-            if (
-              div.scrollTop + div.offsetHeight >= div.scrollHeight - 20 &&
-              !loading &&
-              hasMore
-            ) {
-              // Remove the preventDefault() call
-              if (selectedSo) {
-                onSearch(""); // This will trigger loading more data
-              }
+    if (unitLevel !== "04") return null;
+
+    return (
+      <Select
+        className="w-full rounded-lg border border-gray-300 p-2 text-sm hover:border-blue-500"
+        allowClear
+        showSearch
+        value={selectedSchool}
+        onChange={setSelectedSchool}
+        placeholder="Trường"
+        options={schools.map((s) => ({
+          value: s.id.toString(),
+          label: s.name,
+        }))}
+        onSearch={onSearch}
+        onPopupScroll={(e) => {
+          const { target } = e;
+          const div = target as HTMLDivElement;
+          if (
+            div.scrollTop + div.offsetHeight >= div.scrollHeight - 20 &&
+            !loading &&
+            hasMore
+          ) {
+            if (selectedSo) {
+              onSearch(""); // Trigger loading more data
             }
-          }}
-          disabled={!selectedSo}
-          filterOption={false}
-          notFoundContent={loading ? "Đang tải..." : "Không tìm thấy trường"}
-          loading={loading}
-          dropdownRender={(menu) => (
-            <>
-              {menu}
-              {loading && (
-                <div style={{ padding: "4px 8px", textAlign: "center" }}>
-                  Đang tải thêm...
-                </div>
-              )}
-            </>
-          )}
-        />
-      );
-    }
+          }
+        }}
+        disabled={!selectedSo}
+        filterOption={false}
+        notFoundContent={loading ? "Đang tải..." : "Không tìm thấy trường"}
+        loading={loading}
+        dropdownRender={(menu) => (
+          <>
+            {menu}
+            {loading && (
+              <div className="p-2 text-center text-sm text-gray-500">
+                Đang tải thêm...
+              </div>
+            )}
+          </>
+        )}
+      />
+    );
+  };
 
-    if (unitLevel === "05") {
-      return (
-        <Select
-          style={{ width: "100%" }}
-          allowClear
-          showSearch
-          value={selectedSchool}
-          onChange={setSelectedSchool}
-          placeholder="Đơn vị đối tác"
-          options={soList
-            .filter((s) => s.groupUnitCode === "05")
-            .map((s) => ({
-              value: s.id.toString(),
-              label: s.name,
-            }))}
-          disabled={loading}
-        />
-      );
-    }
+  const renderPartnerSelect = () => {
+    if (unitLevel !== "05") return null;
 
-    return null;
+    return (
+      <Select
+        className="w-full rounded-lg border border-gray-300 p-2 text-sm hover:border-blue-500"
+        allowClear
+        showSearch
+        value={selectedSchool}
+        onChange={setSelectedSchool}
+        placeholder="Đơn vị đối tác"
+        options={partners.map((s) => ({
+          value: s.id.toString(),
+          label: s.name,
+        }))}
+        disabled={loading}
+      />
+    );
   };
 
   return (
-    <>
+    <div className="flex flex-col gap-4">
       {renderUnitOptions()}
       {renderSoSelect()}
       {renderPhongSelect()}
       {renderSchoolSelect()}
-    </>
+      {renderPartnerSelect()}
+    </div>
   );
 }
