@@ -171,9 +171,14 @@ const LoginPage: React.FC = () => {
 
       message.success("Đăng nhập thành công");
       router.push("/user");
-    } catch (error: any) {
-      console.error("Lỗi đăng nhập:", error.response?.data || error.message);
-      message.error("Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.");
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        console.error("Lỗi đăng nhập:", error.response?.data || error.message);
+        message.error("Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.");
+      } else {
+        console.error("Lỗi đăng nhập:", (error as Error).message);
+        message.error("Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.");
+      }
     }
   };
 

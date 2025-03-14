@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
+import { Button } from "antd";
 
 const getUserInfo = async (token: string) => {
   try {
@@ -14,6 +15,7 @@ const getUserInfo = async (token: string) => {
       }
     );
     return response.data;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
     console.error(
       "Lỗi lấy thông tin người dùng:",
@@ -26,6 +28,7 @@ const getUserInfo = async (token: string) => {
 };
 
 const UserPage: React.FC = () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [userInfo, setUserInfo] = useState<any>(null);
   const router = useRouter();
 
@@ -49,6 +52,16 @@ const UserPage: React.FC = () => {
   return (
     <div>
       <h1>User Page</h1>
+      <Button
+        type="primary"
+        danger
+        onClick={() => {
+          localStorage.removeItem("token");
+          router.push("/login");
+        }}
+      >
+        Đăng xuất
+      </Button>
       {userInfo ? (
         <pre>{JSON.stringify(userInfo, null, 2)}</pre>
       ) : (
