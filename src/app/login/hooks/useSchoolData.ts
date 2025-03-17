@@ -8,6 +8,7 @@ import {
   fetchPartnerList,
 } from "../api/schoolApi";
 import debounce from "lodash/debounce";
+import { set } from "lodash";
 
 interface UseSchoolDataReturn {
   soList: School[];
@@ -69,9 +70,9 @@ export function useSchoolData(): UseSchoolDataReturn {
 
   const fetchSchoolListData = useCallback(
     async (doetCode: string, divisionCode: string | null, reset = false) => {
-      if (reset) {
+      if (!reset) {
         skipCount.current = 0;
-        // setSchools([]);
+        setSchools([]);
         setHasMore(true);
       }
 
@@ -83,7 +84,7 @@ export function useSchoolData(): UseSchoolDataReturn {
         LIMIT
       );
       if (data.data?.length) {
-        setSchools((prev) =>  [...prev, ...data.data]);
+        setSchools((prev) => (!reset ? data.data : [...prev, ...data.data]));
         setHasMore(data.data.length === LIMIT);
         skipCount.current += data.data.length;
       } else {
@@ -101,7 +102,7 @@ export function useSchoolData(): UseSchoolDataReturn {
 
       if (!value) {
         skipCount.current = 0;
-        await fetchSchoolListData(doetCode, null, true);
+        await fetchSchoolListData(doetCode, null, false);
         setLoading(false);
         return;
       }
