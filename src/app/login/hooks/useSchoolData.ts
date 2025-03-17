@@ -6,6 +6,7 @@ import {
   fetchSchoolList,
   searchSchools,
   fetchPartnerList,
+  // fetchSchoolById
 } from "../api/schoolApi";
 import debounce from "lodash/debounce";
 
@@ -24,6 +25,7 @@ interface UseSchoolDataReturn {
     reset?: boolean
   ) => Promise<void>;
   fetchPartnerList: () => Promise<void>;
+  // fetchSchoolById: (schoolId: string) => Promise<School[]>
   debouncedSearch: (value: string, doetCode: string, divisionCode: string | null) => void;
 }
 
@@ -66,6 +68,14 @@ export function useSchoolData(): UseSchoolDataReturn {
     setLoading(false);
   }, []);
 
+  // const fetchSchoolByIdData = useCallback(async (schoolId: string) => {
+  //   setLoading(true);
+  //   const data = await fetchSchoolById(schoolId);
+  //   setLoading(false);
+  //   return data;
+  // }
+  // , []);
+
   const fetchSchoolListData = useCallback(
     async (doetCode: string, divisionCode: string | null, reset = false) => {
       if (!reset) {
@@ -94,13 +104,13 @@ export function useSchoolData(): UseSchoolDataReturn {
   );
 
   const debouncedSearch = useCallback(
-    debounce(async (value: string, doetCode: string, divisionCode: string | null) => {
-      searchQuery.current = value;
+    debounce(async (value: string , doetCode: string, divisionCode: string | null) => {
+      searchQuery.current = value ;
       setLoading(true);
 
       if (!value) {
         skipCount.current = 0;
-        await fetchSchoolListData(doetCode, divisionCode, false);
+        await fetchSchoolListData(doetCode, divisionCode, false); // Changed to false to reset the list
         setLoading(false);
         return;
       }

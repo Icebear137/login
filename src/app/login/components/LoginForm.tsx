@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
-import { Space, Input, Button, message } from "antd";
+import { useState, useEffect, useCallback } from "react";
+import { Space, Input, Button } from "antd";
 import { BsTelephoneFill } from "react-icons/bs";
 import { useRouter } from "next/navigation";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import { UnitSelectors } from "./UnitSelectors";
 import { useSchoolData } from "../hooks/useSchoolData";
 import { useSavedLoginPreferences } from "../hooks/useLocalStorage";
@@ -33,37 +35,55 @@ export function LoginForm() {
     fetchPhongList,
     fetchSchoolList,
     fetchPartnerList,
+    fetchSchoolById,
     debouncedSearch,
   } = useSchoolData();
 
   const [password, setPassword] = useState("");
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
+  // Memoize API call functions
+  const memoizedFetchSoList = useCallback(() => {
+    fetchSoList();
+  }, [fetchSoList]);
+
+  const memoizedFetchPartnerList = useCallback(() => {
+    fetchPartnerList();
+  }, [fetchPartnerList]);
+
+  const memoizedFetchPhongList = useCallback(() => {
+    if (selectedSo) {
+      fetchPhongList(selectedSo);
+    }
+  }, [selectedSo, fetchPhongList]);
+
+  // const memoizedFetchSchoolById = useCallback(() => {
+  //   if (selectedSchool) {
+  //     fetchSchoolById(selectedSchool);
+  //   }
+  // }, [selectedSchool, fetchSchoolById]);
+
+  const memoizedFetchSchoolList = useCallback(() => {
+    if (selectedSo) {
+      fetchSchoolList(selectedSo, selectedPhong, false);
+    }
+  }, [selectedSo, selectedPhong, fetchSchoolList]);
+
   // Initial data loading
   useEffect(() => {
-    fetchSoList();
-    fetchPartnerList();
-  }, [fetchSoList, fetchPartnerList]);
+    memoizedFetchSoList();
+    memoizedFetchPartnerList();
+    // memoizedFetchSchoolById();
+  }, [memoizedFetchSoList, memoizedFetchPartnerList]);
 
   // Load dependent data when selections change
   useEffect(() => {
-    if (selectedSo) {
-      fetchPhongList(selectedSo);
-      fetchSchoolList(selectedSo, null, false);
-    }
-  }, [
-    selectedSo,
-    fetchPhongList,
-    fetchSchoolList,
-    selectedPhong,
-    selectedSchool,
-  ]);
+    memoizedFetchPhongList();
+  }, [memoizedFetchPhongList]);
 
   useEffect(() => {
-    if (selectedSo && selectedPhong) {
-      fetchSchoolList(selectedSo, selectedPhong, false);
-    }
-  }, [selectedPhong, selectedSo, fetchSchoolList]);
+    memoizedFetchSchoolList();
+  }, [memoizedFetchSchoolList]);
 
   const handleSoChange = (value: string) => {
     setSelectedSo(value);
@@ -74,25 +94,21 @@ export function LoginForm() {
   const handlePhongChange = (value: string | null) => {
     setSelectedPhong(value);
     setSelectedSchool(null);
-
-    if (value === null && selectedSo) {
-      fetchSchoolList(selectedSo, null, true);
-    }
   };
 
   const handleSearch = (value: string) => {
-    if (selectedSo) {
-      if (value) {
-        debouncedSearch(value, selectedSo, selectedPhong);
-      } else {
-        fetchSchoolList(selectedSo, selectedPhong, true);
-      }
+    if (!selectedSo) return;
+
+    if (value) {
+      debouncedSearch(value, selectedSo, selectedPhong);
+    } else {
+      fetchSchoolList(selectedSo, selectedPhong, true);
     }
   };
 
   const handleLogin = async () => {
     if (!username || !password || !selectedSchool) {
-      message.error("Vui lòng nhập đầy đủ thông tin đăng nhập");
+      toast.error("Vui lòng nhập đầy đủ thông tin đăng nhập");
       return;
     }
 
@@ -104,13 +120,13 @@ export function LoginForm() {
         schoolId: parseInt(selectedSchool),
       });
 
-      message.success("Đăng nhập thành công");
+      toast.success("Đăng nhập thành công");
       router.push("/user");
     } catch (error: any) {
       const errorMessage =
         error.response?.data?.message ||
         "Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.";
-      message.error(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsLoggingIn(false);
     }
@@ -118,6 +134,7 @@ export function LoginForm() {
 
   return (
     <div className="login flex h-full flex-2/3 items-center justify-center flex-col">
+      <ToastContainer position="top-right" />
       <div className="absolute top-4 right-4 flex items-end gap-2 mb-4">
         <BsTelephoneFill className="text-white bg-[#32C36C] rounded-full h-10 w-10 p-2" />
         <div className="flex flex-col">

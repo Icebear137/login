@@ -28,6 +28,10 @@ export async function fetchPartnerList() {
   return fetchSchools({ groupUnitCode: "05" });
 }
 
+// export async function fetchSchoolById(schoolId: string) {
+//   return fetchSchools({ OrgId : schoolId });
+// }
+
 export async function fetchSchoolList(
   doetCode: string,
   divisionCode: string | null,
