@@ -8,7 +8,6 @@ import {
   fetchPartnerList,
 } from "../api/schoolApi";
 import debounce from "lodash/debounce";
-import { set } from "lodash";
 
 interface UseSchoolDataReturn {
   soList: School[];
@@ -25,7 +24,7 @@ interface UseSchoolDataReturn {
     reset?: boolean
   ) => Promise<void>;
   fetchPartnerList: () => Promise<void>;
-  debouncedSearch: (value: string, doetCode: string) => void;
+  debouncedSearch: (value: string, doetCode: string, divisionCode: string | null) => void;
 }
 
 export function useSchoolData(): UseSchoolDataReturn {
@@ -63,7 +62,6 @@ export function useSchoolData(): UseSchoolDataReturn {
   const fetchPartnerListData = useCallback(async () => {
     setLoading(true);
     const data = await fetchPartnerList();
-    console.log(data.data);
     setPartners(data.data || []);
     setLoading(false);
   }, []);
@@ -96,18 +94,18 @@ export function useSchoolData(): UseSchoolDataReturn {
   );
 
   const debouncedSearch = useCallback(
-    debounce(async (value: string, doetCode: string) => {
+    debounce(async (value: string, doetCode: string, divisionCode: string | null) => {
       searchQuery.current = value;
       setLoading(true);
 
       if (!value) {
         skipCount.current = 0;
-        await fetchSchoolListData(doetCode, null, false);
+        await fetchSchoolListData(doetCode, divisionCode, false);
         setLoading(false);
         return;
       }
 
-      const data = await searchSchools(doetCode, value, LIMIT);
+      const data = await searchSchools(doetCode, divisionCode, value, LIMIT);
       if (data.data?.length) {
         setSchools(data.data);
         setHasMore(false);

@@ -1,7 +1,6 @@
 import axios from "axios";
 import { message } from "antd";
 import { API_BASE_URL } from "../utils/constants";
-import { School } from "../types";
 
 export async function fetchSchools(params: Record<string, any>) {
   try {
@@ -49,9 +48,10 @@ export async function fetchSchoolList(
   return fetchSchools(params);
 }
 
-export async function searchSchools(doetCode: string, searchKey: string, limit: number) {
+export async function searchSchools(doetCode: string, divisionCode: string | null, searchKey: string, limit: number) {
   return fetchSchools({
     doetCode,
+    divisionCode,
     searchKey,
     skip: 0,
     take: limit,

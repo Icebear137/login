@@ -51,7 +51,13 @@ export function LoginForm() {
       fetchPhongList(selectedSo);
       fetchSchoolList(selectedSo, null, false);
     }
-  }, [selectedSo, fetchPhongList, fetchSchoolList]);
+  }, [
+    selectedSo,
+    fetchPhongList,
+    fetchSchoolList,
+    selectedPhong,
+    selectedSchool,
+  ]);
 
   useEffect(() => {
     if (selectedSo && selectedPhong) {
@@ -70,14 +76,14 @@ export function LoginForm() {
     setSelectedSchool(null);
 
     if (value === null && selectedSo) {
-      fetchSchoolList(selectedSo, null, false);
+      fetchSchoolList(selectedSo, null, true);
     }
   };
 
   const handleSearch = (value: string) => {
     if (selectedSo) {
       if (value) {
-        debouncedSearch(value, selectedSo);
+        debouncedSearch(value, selectedSo, selectedPhong);
       } else {
         fetchSchoolList(selectedSo, selectedPhong, true);
       }
