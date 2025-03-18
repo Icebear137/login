@@ -1,6 +1,6 @@
 "use client";
-import { LoginBackground } from "./components/LoginBackground";
-import { LoginForm } from "./components/LoginForm";
+import { LoginBackground } from "../../components/login/LoginBackground";
+import { LoginForm } from "../../components/login/LoginForm";
 
 const LoginPage = () => {
   return (
