@@ -23,7 +23,7 @@ export interface AuthState {
   setUsername: (username: string) => void;
   setPassword: (password: string) => void;
   setSelectedSchoolId: (schoolId: string | null) => void;
-  login: () => Promise<void>;
+  login: () => Promise<boolean>; // Changed return type to boolean
   logout: () => void;
 }
 

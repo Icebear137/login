@@ -3,7 +3,6 @@ import { persist } from "zustand/middleware";
 import { AuthState } from "../types/schema";
 import { authService } from "../services/authService";
 import { message } from "antd";
-import { redirect } from "next/navigation";
 
 export const useAuthStore = create<AuthState>()(
   persist(
@@ -24,7 +23,7 @@ export const useAuthStore = create<AuthState>()(
 
         if (!username || !password || !selectedSchoolId) {
           message.error("Vui lòng nhập đầy đủ thông tin đăng nhập");
-          return;
+          return false;
         }
 
         set({ isLoading: true });
@@ -43,10 +42,10 @@ export const useAuthStore = create<AuthState>()(
           });
 
           message.success("Đăng nhập thành công");
-          console.log(username, password, selectedSchoolId);
-          redirect("/user");
+          return true;
         } catch (error) {
           set({ isAuthenticated: false, token: null });
+          return false;
         } finally {
           set({ isLoading: false });
         }

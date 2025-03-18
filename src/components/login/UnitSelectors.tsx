@@ -1,8 +1,9 @@
-import { Select } from "antd";
+import { Select, Space } from "antd";
 import { School } from "../../types/schema";
 import { UNIT_LEVEL_OPTIONS } from "../../utils/constants";
 import { useSchoolStore } from "../../stores/schoolStore";
 import { useAuthStore } from "../../stores/authStore";
+import { useEffect } from "react";
 
 export const UnitSelectors = () => {
   const {
@@ -17,6 +18,8 @@ export const UnitSelectors = () => {
     schoolList,
     isLoading,
     searchSchools,
+    fetchSoList,
+    fetchPartnerList,
   } = useSchoolStore();
 
   const {
@@ -27,6 +30,17 @@ export const UnitSelectors = () => {
 
   const loading = isLoading || isAuthLoading;
 
+  // Initialize data on component mount
+  useEffect(() => {
+    if (!unitLevel) {
+      setUnitLevel("04");
+    } else if (unitLevel === "02" || unitLevel === "03" || unitLevel === "04") {
+      fetchSoList();
+    } else if (unitLevel === "05") {
+      fetchPartnerList();
+    }
+  }, []);
+
   const handleSearch = (value: string) => {
     if (value.trim()) {
       searchSchools(value);
@@ -34,11 +48,10 @@ export const UnitSelectors = () => {
   };
 
   return (
-    <>
+    <Space direction="vertical" className="w-full">
       {/* Unit Level Selector */}
       <Select
         className="w-full"
-        allowClear
         placeholder="Cấp đơn vị"
         value={unitLevel}
         options={UNIT_LEVEL_OPTIONS}
@@ -126,6 +139,6 @@ export const UnitSelectors = () => {
           disabled={loading}
         />
       )}
-    </>
+    </Space>
   );
 };
