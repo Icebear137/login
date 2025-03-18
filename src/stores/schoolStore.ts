@@ -62,14 +62,17 @@ export const useSchoolStore = create<SchoolState>()(
         }
       },
 
-      fetchSchoolList: async (doetCode, divisionCode) => {
+      fetchSchoolList: async (doetCode, divisionCode, skip = 0, take = 50) => {
         set({ isLoading: true });
         try {
           const response = await schoolService.fetchSchoolList(
             doetCode,
-            divisionCode
+            divisionCode,
+            skip,
+            take
           );
           set({ schoolList: response.data });
+          return response;
         } finally {
           set({ isLoading: false });
         }
@@ -87,7 +90,7 @@ export const useSchoolStore = create<SchoolState>()(
 
       searchSchools: debounce(async (keyword) => {
         const { selectedSo, selectedPhong } = get();
-        if (!selectedSo || !keyword) return;
+        if (!selectedSo) return;
 
         set({ isLoading: true });
         try {
@@ -100,7 +103,7 @@ export const useSchoolStore = create<SchoolState>()(
         } finally {
           set({ isLoading: false });
         }
-      }, 300) as (keyword: string) => Promise<void>,
+      }, 500) as (keyword: string) => Promise<void>,
     }),
     {
       name: "school-store",

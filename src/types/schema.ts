@@ -1,3 +1,5 @@
+import { skip } from "node:test";
+
 export interface School {
   id: number;
   name: string;
@@ -44,7 +46,9 @@ export interface SchoolState {
   fetchPhongList: (doetCode: string) => Promise<void>;
   fetchSchoolList: (
     doetCode: string,
-    divisionCode: string | null
+    divisionCode: string | null,
+    skip?: number,
+    take?: number
   ) => Promise<void>;
   searchSchools: (keyword: string) => Promise<void>;
 }
