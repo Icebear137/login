@@ -1,5 +1,3 @@
-import { skip } from "node:test";
-
 export interface School {
   id: number;
   name: string;
@@ -25,7 +23,7 @@ export interface AuthState {
   setUsername: (username: string) => void;
   setPassword: (password: string) => void;
   setSelectedSchoolId: (schoolId: string | null) => void;
-  login: () => Promise<boolean>; // Changed return type to boolean
+  login: () => Promise<boolean>;
   logout: () => void;
 }
 
@@ -37,6 +35,7 @@ export interface SchoolState {
   soList: School[];
   phongList: School[];
   schoolList: School[];
+  totalSchools: number;
   isLoading: boolean;
   setUnitLevel: (level: string | undefined) => void;
   setSelectedSo: (so: string | null) => void;
@@ -45,10 +44,14 @@ export interface SchoolState {
   fetchPartnerList: () => Promise<void>;
   fetchPhongList: (doetCode: string) => Promise<void>;
   fetchSchoolList: (
-    doetCode: string,
+    doetCode: string | null,
     divisionCode: string | null,
     skip?: number,
     take?: number
   ) => Promise<void>;
-  searchSchools: (keyword: string) => Promise<void>;
+  searchSchools: (
+    doetCode: string | null,
+    divisionCode: string | null,
+    keyword: string
+  ) => void;
 }

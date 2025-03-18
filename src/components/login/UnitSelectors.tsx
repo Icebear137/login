@@ -3,7 +3,7 @@ import { School } from "../../types/schema";
 import { UNIT_LEVEL_OPTIONS } from "../../utils/constants";
 import { useSchoolStore } from "../../stores/schoolStore";
 import { useAuthStore } from "../../stores/authStore";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 export const UnitSelectors = () => {
   const {
@@ -20,6 +20,8 @@ export const UnitSelectors = () => {
     searchSchools,
     fetchSoList,
     fetchPartnerList,
+    fetchSchoolList,
+    totalSchools,
   } = useSchoolStore();
 
   const {
@@ -30,9 +32,6 @@ export const UnitSelectors = () => {
 
   const loading = isLoading || isAuthLoading;
   const [searchValue, setSearchValue] = useState("");
-  const [skip, setSkip] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
-  const [allSchools, setAllSchools] = useState<School[]>([]);
 
   // Initialize data on component mount
   useEffect(() => {
@@ -45,67 +44,20 @@ export const UnitSelectors = () => {
     }
   }, []);
 
-  // Update allSchools when schoolList changes
+  // Reset search when So or Phong changes
   useEffect(() => {
-    // If this is a search operation, replace the list
-    if (searchValue) {
-      setAllSchools(schoolList);
-    } else {
-      // If this is a scrolling operation, append to the list
-      if (skip === 0) {
-        setAllSchools(schoolList);
-      } else {
-        // Avoid duplicates
-        const newSchools = schoolList.filter(
-          (school) => !allSchools.some((s) => s.id === school.id)
-        );
-        setAllSchools((prev) => [...prev, ...newSchools]);
-      }
+    if (selectedSo) {
+      fetchSchoolList(selectedSo, selectedPhong, 0);
     }
-    // Set hasMore flag based on returned data count
-    setHasMore(schoolList.length === 50); // 50 is the take amount
-  }, [schoolList]);
-
-  // Reset pagination when So or Phong changes
-  useEffect(() => {
-    setSkip(0);
-    setAllSchools([]);
-    setHasMore(true);
   }, [selectedSo, selectedPhong]);
 
   const handleSearch = (value: string) => {
     setSearchValue(value);
     if (value.trim()) {
-      searchSchools(value);
+      searchSchools(selectedSo, selectedPhong, value);
     } else {
       // Reset to first page when search is cleared
-      loadMoreSchools(0);
-    }
-  };
-
-  const loadMoreSchools = async (newSkip: number) => {
-    if (!selectedSo) return;
-
-    // Import directly here to avoid circular dependency
-    const { schoolService } = await import("../../services/schoolService");
-
-    try {
-      const response = await schoolService.fetchSchoolList(
-        selectedSo,
-        selectedPhong,
-        newSkip,
-        50
-      );
-
-      const schools = response.data || [];
-      // Update school store with the loaded schools
-      useSchoolStore.setState({ schoolList: schools });
-
-      setSkip(newSkip);
-      return schools.length === 50; // Return if there might be more
-    } catch (error) {
-      console.error("Failed to load more schools:", error);
-      return false;
+      fetchSchoolList(selectedSo, selectedPhong, 0);
     }
   };
 
@@ -114,10 +66,10 @@ export const UnitSelectors = () => {
     if (
       target.scrollTop + target.clientHeight >= target.scrollHeight - 20 &&
       !loading &&
-      hasMore &&
+      schoolList.length < totalSchools &&
       !searchValue
     ) {
-      loadMoreSchools(skip + 50);
+      fetchSchoolList(selectedSo, selectedPhong, schoolList.length);
     }
   };
 
@@ -190,7 +142,7 @@ export const UnitSelectors = () => {
           value={selectedSchoolId}
           onSearch={handleSearch}
           searchValue={searchValue}
-          options={allSchools.map((s) => ({
+          options={schoolList.map((s) => ({
             value: s.id.toString(),
             label: s.name,
           }))}
@@ -206,7 +158,7 @@ export const UnitSelectors = () => {
                   <Spin size="small" />
                 </div>
               )}
-              {!hasMore && allSchools.length > 0 && (
+              {schoolList.length >= totalSchools && schoolList.length > 0 && (
                 <div
                   style={{
                     textAlign: "center",

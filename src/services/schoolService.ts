@@ -16,22 +16,22 @@ export const schoolService = {
     return response.data?.data || { data: [], total: 0 };
   },
 
-  fetchSoList: async (): Promise<School[]> => {
+  fetchSoList: async (): Promise<SchoolResponse> => {
     const response = await schoolService.fetchSchools({ groupUnitCode: "02" });
-    return response.data || [];
+    return response;
   },
 
-  fetchPartnerList: async (): Promise<School[]> => {
+  fetchPartnerList: async (): Promise<SchoolResponse> => {
     const response = await schoolService.fetchSchools({ groupUnitCode: "05" });
-    return response.data || [];
+    return response;
   },
 
-  fetchPhongList: async (doetCode: string): Promise<School[]> => {
+  fetchPhongList: async (doetCode: string): Promise<SchoolResponse> => {
     const response = await schoolService.fetchSchools({
       doetCode,
       groupUnitCode: "03",
     });
-    return response.data || [];
+    return response;
   },
 
   fetchSchoolList: async (
@@ -55,10 +55,14 @@ export const schoolService = {
   },
 
   searchSchools: async (
-    doetCode: string,
+    doetCode: string | null,
     divisionCode: string | null,
     searchKey: string
-  ): Promise<School[]> => {
+  ): Promise<SchoolResponse> => {
+    if (!doetCode) {
+      return { data: [], total: 0 };
+    }
+
     const response = await schoolService.fetchSchools({
       doetCode,
       divisionCode,
@@ -67,6 +71,6 @@ export const schoolService = {
       take: 50,
       groupUnitCode: "04",
     });
-    return response.data || [];
+    return response;
   },
 };
