@@ -34,7 +34,11 @@ export const UnitSelectors = ({
     isLoading: isAuthLoading,
   } = useAuthStore();
 
-  const { handleSearch: debouncedSearch, resetSearchQuery } = useSchoolSearch();
+  const {
+    handleSearch: debouncedSearch,
+    resetSearchQuery,
+    searchQuery,
+  } = useSchoolSearch();
   const [searchValue, setSearchValue] = useState("");
 
   const loading = isLoading || isAuthLoading;
@@ -114,7 +118,7 @@ export const UnitSelectors = ({
       setSkip(0);
       if (value.trim()) {
         setIsSearching(true);
-        debouncedSearch(selectedSo || "", selectedPhong || "", value);
+        debouncedSearch(selectedSo || "", selectedPhong || "", value || "");
       } else {
         setIsSearching(false);
         loadMoreSchools(0);
@@ -175,7 +179,7 @@ export const UnitSelectors = ({
           }
           onChange={(value) => {
             setSelectedSo(value);
-            setSelectedSchoolId(null);
+            setSelectedSchoolId("");
           }}
           disabled={loading}
         />
@@ -200,7 +204,7 @@ export const UnitSelectors = ({
           }
           onChange={(value) => {
             setSelectedPhong(value);
-            setSelectedSchoolId(null);
+            setSelectedSchoolId("");
           }}
           disabled={loading || !selectedSo}
         />
@@ -216,7 +220,7 @@ export const UnitSelectors = ({
             placeholder="Trường"
             value={selectedSchoolId}
             onSearch={handleSchoolSearch}
-            searchValue={searchValue}
+            searchValue={searchValue || searchQuery}
             onChange={(value) => {
               setSelectedSchoolId(value);
               const selectedSchools = allSchools.filter(

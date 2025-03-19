@@ -16,7 +16,7 @@ interface LoginFormValues {
 
 export const LoginForm: React.FC = () => {
   const router = useRouter();
-  const { setUsername, setPassword, login, message } = useAuthStore();
+  const { setUsername, setPassword, login } = useAuthStore();
   const [form] = Form.useForm();
   const [isSchoolValid, setIsSchoolValid] = useState(false);
   const [loading, setLoading] = useState(false);

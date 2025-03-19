@@ -56,7 +56,7 @@ export const schoolService = {
   searchSchools: async (
     doetCode: string | null,
     divisionCode: string | null,
-    searchKey: string
+    searchKey: string | ""
   ): Promise<SchoolResponse> => {
     if (!doetCode) {
       return { data: [] };

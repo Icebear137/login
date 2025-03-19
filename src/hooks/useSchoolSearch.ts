@@ -3,7 +3,7 @@ import { useSchoolStore } from "../stores/schoolStore";
 import debounce from "lodash/debounce";
 
 export const useSchoolSearch = () => {
-  const searchQuery = useRef<string>("");
+  const searchQuery = useRef<string>("") || null;
   const { searchSchools: storeSearchSchools } = useSchoolStore();
 
   const debouncedSearch = useCallback(
@@ -11,7 +11,7 @@ export const useSchoolSearch = () => {
       (
         doetCode: string | null,
         divisionCode: string | null,
-        keyword: string
+        keyword: string | ""
       ) => {
         storeSearchSchools(doetCode, divisionCode, keyword);
       },
@@ -25,7 +25,7 @@ export const useSchoolSearch = () => {
       searchQuery.current = keyword;
       debouncedSearch(doetCode, divisionCode, keyword);
     },
-    [debouncedSearch]
+    [debouncedSearch, searchQuery]
   );
 
   const resetSearchQuery = () => {

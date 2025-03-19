@@ -146,7 +146,7 @@ export const useSchoolStore = create<SchoolState>()(
           });
         } catch (error) {
           console.error("Error fetching partner list:", error);
-          set({ schoolList: [], totalSchools: 0 });
+          set({ schoolList: [] });
         } finally {
           set({ isLoading: false });
         }
@@ -174,7 +174,7 @@ export const useSchoolStore = create<SchoolState>()(
       debouncedSearch: (
         doetCode: string,
         divisionCode: string | null,
-        keyword: string
+        keyword: string | ""
       ) => {
         set({ isLoading: true });
         debouncedSearch(doetCode, divisionCode, keyword, set);
