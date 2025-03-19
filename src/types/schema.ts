@@ -31,7 +31,7 @@ export interface SchoolState {
   unitLevel: string | undefined;
   selectedSo: string | null;
   selectedPhong: string | null;
-  selectedSchool: string | null;
+  selectedSchool: School[] | null;
   soList: School[];
   phongList: School[];
   schoolList: School[];
@@ -40,6 +40,7 @@ export interface SchoolState {
   setUnitLevel: (level: string | undefined) => void;
   setSelectedSo: (so: string | null) => void;
   setSelectedPhong: (phong: string | null) => void;
+  setSelectedSchool: (school: School[]) => void;
   fetchSoList: () => Promise<void>;
   fetchPartnerList: () => Promise<void>;
   fetchPhongList: (doetCode: string) => Promise<void>;
