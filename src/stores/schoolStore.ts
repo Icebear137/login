@@ -44,13 +44,10 @@ export const useSchoolStore = create<SchoolState>()(
         set({ unitLevel: level, schoolList: [] });
         if (level === "02" || level === "03" || level === "04") {
           get().fetchSoList();
-          const { selectedSo, selectedSchool } = get();
+          const { selectedSo } = get();
           if (selectedSo) {
             get().fetchPhongList(selectedSo);
             get().fetchSchoolList(selectedSo, null, 0);
-          }
-          if (selectedSchool) {
-            get().setSelectedSchool(selectedSchool);
           }
         }
         if (level === "05") {
@@ -122,15 +119,17 @@ export const useSchoolStore = create<SchoolState>()(
           );
 
           set({
-            schoolList:
-              skip === 0
+            schoolList: [
+              ...(get().selectedSchool || []),
+              ...(skip === 0
                 ? response.data || []
-                : [...get().schoolList, ...(response.data || [])],
+                : [...(get().schoolList || []), ...(response.data || [])]),
+            ],
           });
         } catch (error) {
           console.error("Error fetching school list:", error);
           if (skip === 0) {
-            set({ schoolList: [] });
+            set({ schoolList: [...(get().selectedSchool || [])] });
           }
         } finally {
           set({ isLoading: false });

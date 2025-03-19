@@ -53,7 +53,7 @@ export const UnitSelectors = ({
   useEffect(() => {
     if (!unitLevel) {
       setUnitLevel("04");
-    }
+    } else setUnitLevel(unitLevel);
   }, [setUnitLevel, unitLevel]);
 
   // Update allSchools when schoolList changes
