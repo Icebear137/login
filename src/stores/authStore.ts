@@ -1,10 +1,26 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { AuthState } from "../types/schema";
 import { authService } from "../services/authService";
 import { message } from "antd";
 
-export const useAuthStore = create<AuthState>()(
+interface AuthStoreState {
+  isAuthenticated: boolean;
+  token: string | null;
+  username: string;
+  password: string;
+  selectedSchoolId: string | null;
+  isLoading: boolean;
+}
+
+interface AuthStoreActions {
+  setUsername: (username: string) => void;
+  setPassword: (password: string) => void;
+  setSelectedSchoolId: (schoolId: string) => void;
+  login: () => Promise<boolean>;
+  logout: () => void;
+}
+
+export const useAuthStore = create<AuthStoreState & AuthStoreActions>()(
   persist(
     (set, get) => ({
       isAuthenticated: false,
@@ -14,11 +30,12 @@ export const useAuthStore = create<AuthState>()(
       selectedSchoolId: null,
       isLoading: false,
 
-      setUsername: (username) => set({ username }),
-      setPassword: (password) => set({ password }),
-      setSelectedSchoolId: (schoolId) => set({ selectedSchoolId: schoolId }),
+      setUsername: (username: string) => set({ username }),
+      setPassword: (password: string) => set({ password }),
+      setSelectedSchoolId: (schoolId: string) =>
+        set({ selectedSchoolId: schoolId }),
 
-      login: async () => {
+      login: async (): Promise<boolean> => {
         const { username, password, selectedSchoolId } = get();
 
         if (!username || !password || !selectedSchoolId) {
@@ -44,6 +61,7 @@ export const useAuthStore = create<AuthState>()(
           message.success("Đăng nhập thành công");
           return true;
         } catch (error) {
+          console.error("Login error:", error);
           set({ isAuthenticated: false, token: null });
           return false;
         } finally {
@@ -51,7 +69,7 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      logout: () => {
+      logout: (): void => {
         authService.logout();
         set({
           isAuthenticated: false,

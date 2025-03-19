@@ -3,7 +3,6 @@ import { School } from "../types/schema";
 
 interface SchoolResponse {
   data: School[];
-  total: number;
 }
 
 export const schoolService = {
@@ -13,7 +12,7 @@ export const schoolService = {
     const response = await apiClient.get("/master-data/school/list", {
       params,
     });
-    return response.data?.data || { data: [], total: 0 };
+    return response.data?.data || { data: [] };
   },
 
   fetchSoList: async (): Promise<SchoolResponse> => {
@@ -60,17 +59,28 @@ export const schoolService = {
     searchKey: string
   ): Promise<SchoolResponse> => {
     if (!doetCode) {
-      return { data: [], total: 0 };
+      return { data: [] };
     }
 
-    const response = await schoolService.fetchSchools({
-      doetCode,
-      divisionCode,
-      searchKey,
-      skip: 0,
-      take: 50,
-      groupUnitCode: "04",
-    });
-    return response;
+    if (!divisionCode) {
+      const response = await schoolService.fetchSchools({
+        doetCode,
+        searchKey,
+        skip: 0,
+        take: 50,
+        groupUnitCode: "04",
+      });
+      return response;
+    } else {
+      const response = await schoolService.fetchSchools({
+        doetCode,
+        divisionCode,
+        searchKey,
+        skip: 0,
+        take: 50,
+        groupUnitCode: "04",
+      });
+      return response;
+    }
   },
 };

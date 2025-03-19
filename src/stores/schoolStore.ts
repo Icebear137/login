@@ -25,7 +25,7 @@ const debouncedSearch = debounce(
       set({ schoolList: [] });
     }
   },
-  300
+  500
 );
 
 export const useSchoolStore = create<SchoolState>()(
@@ -38,11 +38,10 @@ export const useSchoolStore = create<SchoolState>()(
       soList: [],
       phongList: [],
       schoolList: [],
-      totalSchools: 0,
       isLoading: false,
 
       setUnitLevel: (level) => {
-        set({ unitLevel: level, schoolList: [], totalSchools: 0 });
+        set({ unitLevel: level, schoolList: [] });
         if (level === "02" || level === "03" || level === "04") {
           get().fetchSoList();
           const { selectedSo, selectedSchool } = get();
@@ -64,7 +63,6 @@ export const useSchoolStore = create<SchoolState>()(
           selectedSo: so,
           selectedPhong: null,
           schoolList: [],
-          totalSchools: 0,
         });
         if (so) {
           get().fetchPhongList(so);
@@ -73,7 +71,7 @@ export const useSchoolStore = create<SchoolState>()(
       },
 
       setSelectedPhong: (phong) => {
-        set({ selectedPhong: phong, schoolList: [], totalSchools: 0 });
+        set({ selectedPhong: phong, schoolList: [] });
         const { selectedSo } = get();
         if (selectedSo) {
           get().fetchSchoolList(selectedSo, phong, 0);
@@ -128,12 +126,11 @@ export const useSchoolStore = create<SchoolState>()(
               skip === 0
                 ? response.data || []
                 : [...get().schoolList, ...(response.data || [])],
-            totalSchools: response.total || 0,
           });
         } catch (error) {
           console.error("Error fetching school list:", error);
           if (skip === 0) {
-            set({ schoolList: [], totalSchools: 0 });
+            set({ schoolList: [] });
           }
         } finally {
           set({ isLoading: false });
@@ -146,7 +143,6 @@ export const useSchoolStore = create<SchoolState>()(
           const response = await schoolService.fetchPartnerList();
           set({
             schoolList: response.data || [],
-            totalSchools: response.total || 0,
           });
         } catch (error) {
           console.error("Error fetching partner list:", error);

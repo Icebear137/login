@@ -35,7 +35,6 @@ export interface SchoolState {
   soList: School[];
   phongList: School[];
   schoolList: School[];
-  totalSchools: number;
   isLoading: boolean;
   setUnitLevel: (level: string | undefined) => void;
   setSelectedSo: (so: string | null) => void;

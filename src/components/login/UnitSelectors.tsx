@@ -7,7 +7,13 @@ import { useSchoolSearch } from "@/hooks/useSchoolSearch";
 import { useEffect, useState, useCallback } from "react";
 import { schoolService } from "@/services/schoolService";
 
-export const UnitSelectors = () => {
+export const UnitSelectors = ({
+  required = true,
+  onValidationChange,
+}: {
+  required?: boolean;
+  onValidationChange?: (isValid: boolean) => void;
+}) => {
   const {
     unitLevel,
     setUnitLevel,
@@ -37,6 +43,7 @@ export const UnitSelectors = () => {
   const [allSchools, setAllSchools] = useState<School[]>([]);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const [showError, setShowError] = useState(false);
 
   // Initialize data on component mount
   useEffect(() => {
@@ -69,6 +76,15 @@ export const UnitSelectors = () => {
     setHasMore(true);
   }, [selectedSo, selectedPhong]);
 
+  // Add effect to handle validation
+  useEffect(() => {
+    if (required) {
+      const isValid = !(unitLevel === "04" && !selectedSchoolId);
+      setShowError(!isValid);
+      onValidationChange?.(isValid);
+    }
+  }, [selectedSchoolId, unitLevel, required, onValidationChange]);
+
   const loadMoreSchools = useCallback(
     async (newSkip: number) => {
       if (!selectedSo) return;
@@ -95,6 +111,7 @@ export const UnitSelectors = () => {
   const handleSchoolSearch = useCallback(
     (value: string) => {
       setSearchValue(value);
+      setSkip(0);
       if (value.trim()) {
         setIsSearching(true);
         debouncedSearch(selectedSo || "", selectedPhong || "", value);
@@ -191,60 +208,66 @@ export const UnitSelectors = () => {
 
       {/* Trường Selector with Infinite Scroll */}
       {unitLevel === "04" && (
-        <Select
-          className="w-full"
-          allowClear
-          showSearch
-          placeholder="Trường"
-          value={selectedSchoolId}
-          onSearch={handleSchoolSearch}
-          searchValue={searchValue}
-          onChange={(value) => {
-            setSelectedSchoolId(value);
-            const selectedSchools = allSchools.filter(
-              (school) => school.id.toString() === value
-            );
-            setSelectedSchool(selectedSchools);
-            resetSearchQuery();
-          }}
-          onClear={() => {
-            setSearchValue("");
-            resetSearchQuery();
-            loadMoreSchools(0);
-          }}
-          disabled={loading || !selectedSo}
-          onPopupScroll={handlePopupScroll}
-          listHeight={256}
-          filterOption={false}
-          options={allSchools.map((s) => ({
-            value: s.id.toString(),
-            label: s.name,
-          }))}
-          notFoundContent={loading ? <Spin size="small" /> : "Không tìm thấy"}
-          dropdownRender={(menu) => (
-            <div>
-              {menu}
-              {loading && (
-                <div style={{ textAlign: "center", padding: "8px 0" }}>
-                  <Spin size="small" />
-                </div>
-              )}
-              {!hasMore && allSchools.length > 0 && !searchValue && (
-                <div
-                  style={{
-                    textAlign: "center",
-                    padding: "8px 0",
-                    color: "#999",
-                  }}
-                >
-                  Đã hiển thị tất cả
-                </div>
-              )}
-            </div>
+        <>
+          <Select
+            className={`w-full ${showError ? "border-red-500" : ""}`}
+            allowClear
+            showSearch
+            placeholder="Trường"
+            value={selectedSchoolId}
+            onSearch={handleSchoolSearch}
+            searchValue={searchValue}
+            onChange={(value) => {
+              setSelectedSchoolId(value);
+              const selectedSchools = allSchools.filter(
+                (school) => school.id.toString() === value
+              );
+              setSelectedSchool(selectedSchools);
+              resetSearchQuery();
+            }}
+            onClear={() => {
+              setSearchValue("");
+              resetSearchQuery();
+              loadMoreSchools(0);
+            }}
+            disabled={loading || !selectedSo}
+            onPopupScroll={handlePopupScroll}
+            listHeight={256}
+            filterOption={false}
+            options={allSchools.map((s) => ({
+              value: s.id.toString(),
+              label: s.name,
+            }))}
+            notFoundContent={loading ? <Spin size="small" /> : "Không tìm thấy"}
+            dropdownRender={(menu) => (
+              <div>
+                {menu}
+                {loading && (
+                  <div style={{ textAlign: "center", padding: "8px 0" }}>
+                    <Spin size="small" />
+                  </div>
+                )}
+                {!hasMore && allSchools.length > 0 && !searchValue && (
+                  <div
+                    style={{
+                      textAlign: "center",
+                      padding: "8px 0",
+                      color: "#999",
+                    }}
+                  >
+                    Đã hiển thị tất cả
+                  </div>
+                )}
+              </div>
+            )}
+            open={isDropdownOpen}
+            onDropdownVisibleChange={handleDropdownVisibleChange}
+            status={showError ? "error" : undefined}
+          />
+          {showError && (
+            <div className="text-red-500 text-sm">Vui lòng chọn trường</div>
           )}
-          open={isDropdownOpen}
-          onDropdownVisibleChange={handleDropdownVisibleChange}
-        />
+        </>
       )}
 
       {/* Đơn vị đối tác Selector */}
