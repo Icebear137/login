@@ -2,6 +2,31 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { SchoolState, School } from "../types/schema";
 import { schoolService } from "../services/schoolService";
+import { debounce } from "lodash";
+
+const debouncedSearch = debounce(
+  async (
+    doetCode: string,
+    divisionCode: string | null,
+    keyword: string,
+    set: any
+  ) => {
+    try {
+      const response = await schoolService.searchSchools(
+        doetCode,
+        divisionCode,
+        keyword
+      );
+      set({
+        schoolList: response.data || [],
+      });
+    } catch (error) {
+      console.error("Error searching schools:", error);
+      set({ schoolList: [] });
+    }
+  },
+  300
+);
 
 export const useSchoolStore = create<SchoolState>()(
   persist(
@@ -81,7 +106,12 @@ export const useSchoolStore = create<SchoolState>()(
         }
       },
 
-      fetchSchoolList: async (doetCode, divisionCode, skip = 0, take = 50) => {
+      fetchSchoolList: async (
+        doetCode: string | null,
+        divisionCode: string | null,
+        skip = 0,
+        take = 50
+      ) => {
         if (!doetCode) return;
 
         set({ isLoading: true });
@@ -93,19 +123,11 @@ export const useSchoolStore = create<SchoolState>()(
             take
           );
 
-          // Append results for pagination, or replace if starting from 0
-          const newSchools =
-            skip === 0
-              ? response.data || []
-              : [...get().schoolList, ...(response.data || [])];
-
-          // Remove duplicates (just in case)
-          const uniqueSchools = Array.from(
-            new Map(newSchools.map((school) => [school.id, school])).values()
-          );
-
           set({
-            schoolList: uniqueSchools,
+            schoolList:
+              skip === 0
+                ? response.data || []
+                : [...get().schoolList, ...(response.data || [])],
             totalSchools: response.total || 0,
           });
         } catch (error) {
@@ -151,6 +173,15 @@ export const useSchoolStore = create<SchoolState>()(
         } finally {
           set({ isLoading: false });
         }
+      },
+
+      debouncedSearch: (
+        doetCode: string,
+        divisionCode: string | null,
+        keyword: string
+      ) => {
+        set({ isLoading: true });
+        debouncedSearch(doetCode, divisionCode, keyword, set);
       },
 
       setSelectedSchool: (schools: School[]) => {

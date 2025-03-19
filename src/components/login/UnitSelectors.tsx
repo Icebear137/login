@@ -4,7 +4,8 @@ import { UNIT_LEVEL_OPTIONS } from "../../utils/constants";
 import { useSchoolStore } from "../../stores/schoolStore";
 import { useAuthStore } from "../../stores/authStore";
 import { useSchoolSearch } from "@/hooks/useSchoolSearch";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+import { schoolService } from "@/services/schoolService";
 
 export const UnitSelectors = () => {
   const {
@@ -18,8 +19,6 @@ export const UnitSelectors = () => {
     phongList,
     schoolList,
     isLoading,
-    searchSchools,
-    selectedSchool,
     setSelectedSchool,
   } = useSchoolStore();
 
@@ -29,44 +28,39 @@ export const UnitSelectors = () => {
     isLoading: isAuthLoading,
   } = useAuthStore();
 
-  const {
-    handleSearch: debouncedSearch,
-    searchQuery,
-    resetSearchQuery,
-  } = useSchoolSearch();
+  const { handleSearch: debouncedSearch, resetSearchQuery } = useSchoolSearch();
   const [searchValue, setSearchValue] = useState("");
 
   const loading = isLoading || isAuthLoading;
   const [skip, setSkip] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [allSchools, setAllSchools] = useState<School[]>([]);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
 
   // Initialize data on component mount
   useEffect(() => {
-    const initializeData = async () => {
-      if (!unitLevel) {
-        setUnitLevel("04");
-        return;
-      }
-    };
-
-    initializeData();
-  }, []);
+    if (!unitLevel) {
+      setUnitLevel("04");
+    }
+  }, [setUnitLevel, unitLevel]);
 
   // Update allSchools when schoolList changes
   useEffect(() => {
-    if (skip === 0) {
+    if (isSearching) {
+      // During search, replace the entire list
       setAllSchools(schoolList);
     } else {
-      // Avoid duplicates
-      const newSchools = schoolList.filter(
-        (school) => !allSchools.some((s) => s.id === school.id)
-      );
-      setAllSchools((prev) => [...prev, ...newSchools]);
+      // During normal scroll, append to list
+      setAllSchools((prev) => {
+        const newSchools = schoolList.filter(
+          (school) => !prev.some((s) => s.id === school.id)
+        );
+        return skip === 0 ? schoolList : [...prev, ...newSchools];
+      });
     }
-    // Set hasMore flag based on returned data count
-    setHasMore(schoolList.length === 50); // 50 is the take amount
-  }, [schoolList, skip]);
+    setHasMore(schoolList.length === 50 && !isSearching);
+  }, [schoolList, skip, isSearching]);
 
   // Reset pagination when So or Phong changes
   useEffect(() => {
@@ -75,53 +69,64 @@ export const UnitSelectors = () => {
     setHasMore(true);
   }, [selectedSo, selectedPhong]);
 
-  const handleSchoolSearch = (value: string) => {
-    setSearchValue(value);
-    if (value.trim()) {
-      debouncedSearch(selectedSo || "", selectedPhong || "", value);
-    } else {
-      // Reset to first page when search is cleared
+  const loadMoreSchools = useCallback(
+    async (newSkip: number) => {
+      if (!selectedSo) return;
+      if (searchValue.trim()) return;
+
+      try {
+        const response = await schoolService.fetchSchoolList(
+          selectedSo,
+          selectedPhong,
+          newSkip,
+          50
+        );
+
+        const schools = response.data || [];
+        useSchoolStore.setState({ schoolList: schools });
+        setSkip(newSkip);
+      } catch (error) {
+        console.error("Failed to load more schools:", error);
+      }
+    },
+    [selectedSo, selectedPhong, searchValue]
+  );
+
+  const handleSchoolSearch = useCallback(
+    (value: string) => {
+      setSearchValue(value);
+      if (value.trim()) {
+        setIsSearching(true);
+        debouncedSearch(selectedSo || "", selectedPhong || "", value);
+      } else {
+        setIsSearching(false);
+        loadMoreSchools(0);
+      }
+    },
+    [selectedSo, selectedPhong, debouncedSearch, loadMoreSchools]
+  );
+
+  const handlePopupScroll = useCallback(
+    (e: React.UIEvent<HTMLDivElement>) => {
+      const target = e.target as HTMLDivElement;
+      if (
+        target.scrollTop + target.clientHeight >= target.scrollHeight - 20 &&
+        !loading &&
+        hasMore
+      ) {
+        loadMoreSchools(skip + 50);
+      }
+    },
+    [loading, hasMore, skip, loadMoreSchools]
+  );
+
+  const handleDropdownVisibleChange = (open: boolean) => {
+    setIsDropdownOpen(open);
+    if (!open) {
+      setSearchValue("");
+      setIsSearching(false);
+      resetSearchQuery();
       loadMoreSchools(0);
-    }
-  };
-
-  const loadMoreSchools = async (newSkip: number) => {
-    if (!selectedSo) return;
-
-    // Don't load more if we're in search mode
-    if (searchValue.trim()) return;
-
-    // Import directly here to avoid circular dependency
-    const { schoolService } = await import("../../services/schoolService");
-
-    try {
-      const response = await schoolService.fetchSchoolList(
-        selectedSo,
-        selectedPhong,
-        newSkip,
-        50
-      );
-
-      const schools = response.data || [];
-      // Update school store with the loaded schools
-      useSchoolStore.setState({ schoolList: schools });
-
-      setSkip(newSkip);
-      return schools.length === 50; // Return if there might be more
-    } catch (error) {
-      console.error("Failed to load more schools:", error);
-      return false;
-    }
-  };
-
-  const handlePopupScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const target = e.target as HTMLDivElement;
-    if (
-      target.scrollTop + target.clientHeight >= target.scrollHeight - 20 &&
-      !loading &&
-      hasMore
-    ) {
-      loadMoreSchools(skip + 50);
     }
   };
 
@@ -193,7 +198,7 @@ export const UnitSelectors = () => {
           placeholder="Trường"
           value={selectedSchoolId}
           onSearch={handleSchoolSearch}
-          searchValue={searchValue || searchQuery}
+          searchValue={searchValue}
           onChange={(value) => {
             setSelectedSchoolId(value);
             const selectedSchools = allSchools.filter(
@@ -237,6 +242,8 @@ export const UnitSelectors = () => {
               )}
             </div>
           )}
+          open={isDropdownOpen}
+          onDropdownVisibleChange={handleDropdownVisibleChange}
         />
       )}
 
