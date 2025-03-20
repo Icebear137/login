@@ -54,4 +54,16 @@ export interface SchoolState {
     divisionCode: string | null,
     keyword: string
   ) => void;
+  fetchSchoolOptions: (
+    selectedSo: string,
+    selectedPhong: string,
+    searchValue: string,
+    existingIds: Set<string>
+  ) => Promise<SchoolOption[]>;
+}
+
+export interface SchoolOption {
+  key?: string;
+  value: string;
+  label: string;
 }

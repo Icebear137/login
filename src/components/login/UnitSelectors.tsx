@@ -1,11 +1,13 @@
-import { Select, Space, Spin } from "antd";
+import { Select, Space } from "antd";
 import { School } from "../../types/schema";
 import { UNIT_LEVEL_OPTIONS } from "../../utils/constants";
 import { useSchoolStore } from "../../stores/schoolStore";
 import { useAuthStore } from "../../stores/authStore";
-import { useSchoolSearch } from "@/hooks/useSchoolSearch";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useCallback } from "react";
 import { schoolService } from "@/services/schoolService";
+import { DebounceSelect } from "@/components/common/DebounceSelect";
+import { useSchoolData } from "@/hooks/useSchoolData";
+import { useState } from "react";
 
 export const UnitSelectors = ({
   required = true,
@@ -21,11 +23,13 @@ export const UnitSelectors = ({
     setSelectedSo,
     selectedPhong,
     setSelectedPhong,
+    schoolList,
     soList,
     phongList,
-    schoolList,
     isLoading,
+    selectedSchool,
     setSelectedSchool,
+    fetchSchoolOptions: fetchSchoolOptionsFromStore,
   } = useSchoolStore();
 
   const {
@@ -35,52 +39,52 @@ export const UnitSelectors = ({
   } = useAuthStore();
 
   const {
-    handleSearch: debouncedSearch,
-    resetSearchQuery,
-    searchQuery,
-  } = useSchoolSearch();
-  const [searchValue, setSearchValue] = useState("");
+    skip,
+    setSkip,
+    hasMore,
+    setHasMore,
+    setAllSchools,
+    schoolOptions,
+    setSchoolOptions,
+  } = useSchoolData();
 
-  const loading = isLoading || isAuthLoading;
-  const [skip, setSkip] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
-  const [allSchools, setAllSchools] = useState<School[]>([]);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [isSearching, setIsSearching] = useState(false);
   const [showError, setShowError] = useState(false);
+  const loading = isLoading || isAuthLoading;
 
-  // Initialize data on component mount
   useEffect(() => {
-    if (!unitLevel) {
-      setUnitLevel("04");
-    } else setUnitLevel(unitLevel);
-  }, [setUnitLevel, unitLevel]);
+    if (!unitLevel) setUnitLevel("04");
+  }, []);
 
-  // Update allSchools when schoolList changes
   useEffect(() => {
-    if (isSearching) {
-      // During search, replace the entire list
-      setAllSchools(schoolList);
-    } else {
-      // During normal scroll, append to list
+    if (schoolList.length > 0) {
       setAllSchools((prev) => {
         const newSchools = schoolList.filter(
           (school) => !prev.some((s) => s.id === school.id)
         );
-        return skip === 0 ? schoolList : [...prev, ...newSchools];
-      });
-    }
-    setHasMore(schoolList.length === 50 && !isSearching);
-  }, [schoolList, skip, isSearching]);
+        const updatedSchools =
+          skip === 0 ? schoolList : [...prev, ...newSchools];
 
-  // Reset pagination when So or Phong changes
+        setSchoolOptions(
+          updatedSchools.map((s) => ({
+            key: `list_${s.id}`,
+            value: s.id.toString(),
+            label: s.name,
+          }))
+        );
+
+        return updatedSchools;
+      });
+      setHasMore(schoolList.length === 50);
+    }
+  }, [schoolList, skip]);
+
   useEffect(() => {
     setSkip(0);
     setAllSchools([]);
+    setSchoolOptions([]);
     setHasMore(true);
   }, [selectedSo, selectedPhong]);
 
-  // Add effect to handle validation
   useEffect(() => {
     if (required) {
       const isValid = !(unitLevel === "04" && !selectedSchoolId);
@@ -89,10 +93,42 @@ export const UnitSelectors = ({
     }
   }, [selectedSchoolId, unitLevel, required, onValidationChange]);
 
+  // Handlers
+  const handleSoChange = (value: string) => {
+    setSelectedSo(value);
+    setSelectedSchoolId("");
+    setSelectedSchool([]);
+    setAllSchools([]);
+    setSchoolOptions([]);
+  };
+
+  const handlePhongChange = (value: string) => {
+    setSelectedPhong(value);
+    setSelectedSchoolId("");
+    setSelectedSchool([]);
+    setAllSchools([]);
+    setSchoolOptions([]);
+  };
+
+  const handleSchoolChange = (value: any) => {
+    if (!value) {
+      setSelectedSchoolId("");
+      setSelectedSchool([]);
+      return;
+    }
+
+    setSelectedSchoolId(value.value);
+    setSelectedSchool([
+      {
+        id: Number(value.value),
+        name: value.label,
+      } as School,
+    ]);
+  };
+
   const loadMoreSchools = useCallback(
     async (newSkip: number) => {
       if (!selectedSo) return;
-      if (searchValue.trim()) return;
 
       try {
         const response = await schoolService.fetchSchoolList(
@@ -101,59 +137,64 @@ export const UnitSelectors = ({
           newSkip,
           50
         );
-
-        const schools = response.data || [];
-        useSchoolStore.setState({ schoolList: schools });
+        useSchoolStore.setState({ schoolList: response.data || [] });
         setSkip(newSkip);
       } catch (error) {
         console.error("Failed to load more schools:", error);
       }
     },
-    [selectedSo, selectedPhong, searchValue]
+    [selectedSo, selectedPhong]
   );
 
-  const handleSchoolSearch = useCallback(
-    (value: string) => {
-      setSearchValue(value);
-      setSkip(0);
-      if (value.trim()) {
-        setIsSearching(true);
-        debouncedSearch(selectedSo || "", selectedPhong || "", value || "");
-      } else {
-        setIsSearching(false);
-        loadMoreSchools(0);
-      }
-    },
-    [selectedSo, selectedPhong, debouncedSearch, loadMoreSchools]
-  );
+  const fetchSchoolOptions = async (searchValue: string) => {
+    if (!selectedSo) return [];
+    const existingIds = new Set(schoolOptions.map((opt) => opt.value));
+    return fetchSchoolOptionsFromStore(
+      selectedSo,
+      selectedPhong,
+      searchValue,
+      existingIds
+    );
+  };
 
-  const handlePopupScroll = useCallback(
-    (e: React.UIEvent<HTMLDivElement>) => {
-      const target = e.target as HTMLDivElement;
-      if (
-        target.scrollTop + target.clientHeight >= target.scrollHeight - 20 &&
-        !loading &&
-        hasMore
-      ) {
-        loadMoreSchools(skip + 50);
-      }
-    },
-    [loading, hasMore, skip, loadMoreSchools]
-  );
-
-  const handleDropdownVisibleChange = (open: boolean) => {
-    setIsDropdownOpen(open);
-    if (!open) {
-      setSearchValue("");
-      setIsSearching(false);
-      resetSearchQuery();
-      loadMoreSchools(0);
+  const handlePopupScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLDivElement;
+    if (
+      target.scrollTop + target.clientHeight >= target.scrollHeight - 20 &&
+      !loading &&
+      hasMore
+    ) {
+      loadMoreSchools(skip + 50);
     }
   };
 
+  const getInitialOptions = useCallback(() => {
+    const selectedOption = selectedSchool?.[0] && {
+      key: `selected_${selectedSchool[0].id}`,
+      value: selectedSchool[0].id.toString(),
+      label: selectedSchool[0].name,
+    };
+
+    const uniqueOptions = schoolOptions.reduce((acc, curr) => {
+      if (!acc.some((option) => option.value === curr.value)) {
+        acc.push({
+          ...curr,
+          key: `list_${curr.value}`,
+        });
+      }
+      return acc;
+    }, [] as typeof schoolOptions);
+
+    return selectedOption
+      ? [
+          selectedOption,
+          ...uniqueOptions.filter((opt) => opt.value !== selectedOption.value),
+        ]
+      : uniqueOptions;
+  }, [schoolOptions, selectedSchool]);
+
   return (
     <Space direction="vertical" className="w-full">
-      {/* Unit Level Selector */}
       <Select
         className="w-full"
         placeholder="Cấp đơn vị"
@@ -163,7 +204,6 @@ export const UnitSelectors = ({
         disabled={loading}
       />
 
-      {/* Sở Selector */}
       {(unitLevel === "02" || unitLevel === "03" || unitLevel === "04") && (
         <Select
           className="w-full"
@@ -177,15 +217,11 @@ export const UnitSelectors = ({
               ?.toLowerCase()
               .includes(input.toLowerCase())
           }
-          onChange={(value) => {
-            setSelectedSo(value);
-            setSelectedSchoolId("");
-          }}
+          onChange={handleSoChange}
           disabled={loading}
         />
       )}
 
-      {/* Phòng Selector */}
       {(unitLevel === "03" || unitLevel === "04") && (
         <Select
           className="w-full"
@@ -202,70 +238,33 @@ export const UnitSelectors = ({
               ?.toLowerCase()
               .includes(input.toLowerCase())
           }
-          onChange={(value) => {
-            setSelectedPhong(value);
-            setSelectedSchoolId("");
-          }}
+          onChange={handlePhongChange}
           disabled={loading || !selectedSo}
         />
       )}
 
-      {/* Trường Selector  */}
       {unitLevel === "04" && (
         <>
-          <Select
+          <DebounceSelect
             className={`w-full ${showError ? "border-red-500" : ""}`}
             allowClear
             showSearch
             placeholder="Trường"
-            value={selectedSchoolId}
-            onSearch={handleSchoolSearch}
-            searchValue={searchValue || searchQuery}
-            onChange={(value) => {
-              setSelectedSchoolId(value);
-              const selectedSchools = allSchools.filter(
-                (school) => school.id.toString() === value
-              );
-              setSelectedSchool(selectedSchools);
-              resetSearchQuery();
-            }}
-            onClear={() => {
-              setSearchValue("");
-              resetSearchQuery();
-              loadMoreSchools(0);
-            }}
+            value={
+              selectedSchoolId
+                ? {
+                    key: `selected_${selectedSchoolId}`,
+                    value: selectedSchoolId,
+                    label: selectedSchool?.[0]?.name || "",
+                  }
+                : null
+            }
+            fetchOptions={fetchSchoolOptions}
+            onChange={handleSchoolChange}
             disabled={loading || !selectedSo}
-            onPopupScroll={handlePopupScroll}
+            onScroll={handlePopupScroll}
+            initialOptions={getInitialOptions()}
             listHeight={256}
-            filterOption={false}
-            options={allSchools.map((s) => ({
-              value: s.id.toString(),
-              label: s.name,
-            }))}
-            notFoundContent={loading ? <Spin size="small" /> : "Không tìm thấy"}
-            dropdownRender={(menu) => (
-              <div>
-                {menu}
-                {loading && (
-                  <div style={{ textAlign: "center", padding: "8px 0" }}>
-                    <Spin size="small" />
-                  </div>
-                )}
-                {!hasMore && allSchools.length > 0 && !searchValue && (
-                  <div
-                    style={{
-                      textAlign: "center",
-                      padding: "8px 0",
-                      color: "#999",
-                    }}
-                  >
-                    Đã hiển thị tất cả
-                  </div>
-                )}
-              </div>
-            )}
-            open={isDropdownOpen}
-            onDropdownVisibleChange={handleDropdownVisibleChange}
             status={showError ? "error" : undefined}
           />
           {showError && (
@@ -274,7 +273,6 @@ export const UnitSelectors = ({
         </>
       )}
 
-      {/* Đơn vị đối tác Selector */}
       {unitLevel === "05" && (
         <Select
           className="w-full"
