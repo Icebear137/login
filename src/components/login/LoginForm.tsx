@@ -35,15 +35,6 @@ export const LoginForm: React.FC = () => {
       if (success) {
         toast.success("Đăng nhập thành công!");
         router.push("/user");
-      } else {
-        toast.error("Đăng nhập thất bại!");
-        console.log(success);
-      }
-    } catch (error: any) {
-      if (error.response?.data.status === 400) {
-        toast.error("Sai tên đăng nhập hoặc mật khẩu!");
-      } else {
-        toast.error("Có lỗi xảy ra khi đăng nhập!");
       }
     } finally {
       setLoading(false);

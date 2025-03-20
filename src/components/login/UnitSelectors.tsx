@@ -210,7 +210,7 @@ export const UnitSelectors = ({
         />
       )}
 
-      {/* Trường Selector with Infinite Scroll */}
+      {/* Trường Selector  */}
       {unitLevel === "04" && (
         <>
           <Select

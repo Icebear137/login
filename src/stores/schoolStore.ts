@@ -9,7 +9,7 @@ const debouncedSearch = debounce(
     doetCode: string,
     divisionCode: string | null,
     keyword: string,
-    set: any
+    set: (state: Partial<SchoolState>) => void
   ) => {
     try {
       const response = await schoolService.searchSchools(

@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { authService } from "../services/authService";
 import { message } from "antd";
+import { toast } from "react-toastify";
 
 interface AuthStoreState {
   isAuthenticated: boolean;
@@ -39,7 +40,7 @@ export const useAuthStore = create<AuthStoreState & AuthStoreActions>()(
         const { username, password, selectedSchoolId } = get();
 
         if (!username || !password || !selectedSchoolId) {
-          message.error("Vui lòng nhập đầy đủ thông tin đăng nhập");
+          toast.error("Vui lòng nhập đầy đủ thông tin đăng nhập");
           return false;
         }
 
@@ -61,7 +62,10 @@ export const useAuthStore = create<AuthStoreState & AuthStoreActions>()(
           message.success("Đăng nhập thành công");
           return true;
         } catch (error) {
-          console.error("Login error:", error);
+          const errorMessage =
+            (error as { response?: { data?: { message?: string } } })?.response
+              ?.data?.message || "Đăng nhập thất bại";
+          toast.error(errorMessage);
           set({ isAuthenticated: false, token: null });
           return false;
         } finally {
