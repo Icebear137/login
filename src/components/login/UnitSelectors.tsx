@@ -1,4 +1,4 @@
-import { Select, Space, Spin } from "antd";
+import { Select, Space } from "antd";
 import { School } from "../../types/schema";
 import { UNIT_LEVEL_OPTIONS } from "../../utils/constants";
 import { useSchoolStore } from "../../stores/schoolStore";
@@ -21,9 +21,9 @@ export const UnitSelectors = ({
     setSelectedSo,
     selectedPhong,
     setSelectedPhong,
+    schoolList,
     soList,
     phongList,
-    schoolList,
     isLoading,
     setSelectedSchool,
   } = useSchoolStore();
@@ -38,6 +38,9 @@ export const UnitSelectors = ({
   const [skip, setSkip] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [allSchools, setAllSchools] = useState<School[]>([]);
+  const [schoolOptions, setSchoolOptions] = useState<
+    { value: string; label: string }[]
+  >([]);
   const [showError, setShowError] = useState(false);
 
   // Initialize data on component mount
@@ -49,19 +52,33 @@ export const UnitSelectors = ({
 
   // Update allSchools when schoolList changes
   useEffect(() => {
-    setAllSchools((prev) => {
-      const newSchools = schoolList.filter(
-        (school) => !prev.some((s) => s.id === school.id)
-      );
-      return skip === 0 ? schoolList : [...prev, ...newSchools];
-    });
-    setHasMore(schoolList.length === 50);
+    if (schoolList.length > 0) {
+      setAllSchools((prev) => {
+        const newSchools = schoolList.filter(
+          (school) => !prev.some((s) => s.id === school.id)
+        );
+        const updatedSchools =
+          skip === 0 ? schoolList : [...prev, ...newSchools];
+
+        // Update school options whenever allSchools changes
+        setSchoolOptions(
+          updatedSchools.map((s) => ({
+            value: s.id.toString(),
+            label: s.name,
+          }))
+        );
+
+        return updatedSchools;
+      });
+      setHasMore(schoolList.length === 50);
+    }
   }, [schoolList, skip]);
 
   // Reset pagination when So or Phong changes
   useEffect(() => {
     setSkip(0);
     setAllSchools([]);
+    setSchoolOptions([]);
     setHasMore(true);
   }, [selectedSo, selectedPhong]);
 
@@ -127,10 +144,11 @@ export const UnitSelectors = ({
     }
   };
 
-  const handleSchoolChange = (value: string) => {
-    setSelectedSchoolId(value);
+  const handleSchoolChange = (value: { label: string; value: string }) => {
+    setSelectedSchoolId(value.value);
+    console.log("Selected school:", value.value);
     const selectedSchools = allSchools.filter(
-      (school) => school.id.toString() === value
+      (school) => school.id.toString() === value.value
     );
     setSelectedSchool(selectedSchools);
   };
@@ -202,15 +220,39 @@ export const UnitSelectors = ({
             allowClear
             showSearch
             placeholder="Trường"
-            value={selectedSchoolId}
+            value={
+              selectedSchoolId
+                ? {
+                    label:
+                      schoolOptions.find((s) => s.value === selectedSchoolId)
+                        ?.label || "",
+                    value: selectedSchoolId,
+                  }
+                : undefined
+            }
             fetchOptions={fetchSchoolOptions}
-            onChange={handleSchoolChange}
+            onChange={(value) => {
+              // Nếu value là null hoặc undefined (khi clear)
+              if (!value) {
+                setSelectedSchoolId("");
+                return;
+              }
+              // Kiểm tra nếu value là string (giá trị trực tiếp)
+              if (typeof value === "string") {
+                setSelectedSchoolId(value);
+                console.log("Selected school:", value);
+                const selectedSchools = allSchools.filter(
+                  (school) => school.id.toString() === value
+                );
+                setSelectedSchool(selectedSchools);
+                return;
+              }
+              // Xử lý khi value là object
+              handleSchoolChange(value as { label: string; value: string });
+            }}
             disabled={loading || !selectedSo}
             onScroll={handlePopupScroll}
-            initialOptions={allSchools.map((s) => ({
-              value: s.id.toString(),
-              label: s.name,
-            }))}
+            initialOptions={schoolOptions}
             listHeight={256}
             status={showError ? "error" : undefined}
           />

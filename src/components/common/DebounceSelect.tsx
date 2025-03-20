@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useMemo, useRef, useState, useEffect } from "react";
 import { Select, Spin } from "antd";
 import type { SelectProps } from "antd";
 import debounce from "lodash/debounce";
@@ -25,12 +25,21 @@ export function DebounceSelect<
     initialOptions as ValueType[]
   );
   const fetchRef = useRef(0);
+  const [searching, setSearching] = useState(false);
+
+  // Update options when initialOptions change
+  useEffect(() => {
+    if (!searching) {
+      setOptions(initialOptions as ValueType[]);
+    }
+  }, [initialOptions, searching]);
 
   const debounceFetcher = useMemo(() => {
     const loadOptions = (value: string) => {
       fetchRef.current += 1;
       const fetchId = fetchRef.current;
       setFetching(true);
+      setSearching(true);
 
       fetchOptions(value).then((newOptions) => {
         if (fetchId !== fetchRef.current) {
@@ -49,6 +58,7 @@ export function DebounceSelect<
   // Reset options when dropdown closes
   const handleDropdownVisibleChange = (open: boolean) => {
     if (!open) {
+      setSearching(false);
       setOptions(initialOptions as ValueType[]);
     }
   };
@@ -56,7 +66,14 @@ export function DebounceSelect<
   return (
     <Select
       filterOption={false}
-      onSearch={debounceFetcher}
+      onSearch={(value) => {
+        if (value) {
+          debounceFetcher(value);
+        } else {
+          setSearching(false);
+          setOptions(initialOptions as ValueType[]);
+        }
+      }}
       notFoundContent={fetching ? <Spin size="small" /> : null}
       options={options}
       onPopupScroll={onScroll}
