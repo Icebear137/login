@@ -118,12 +118,21 @@ export const useSchoolStore = create<SchoolState>()(
             take
           );
 
+          const selectedSchools = get().selectedSchool || [];
+          const responseData = response.data || [];
+
+          // Filter out schools that are already in response.data
+          const uniqueSelectedSchools = selectedSchools.filter(
+            (selected) =>
+              !responseData.some((school) => school.id === selected.id)
+          );
+
           set({
             schoolList: [
-              ...(get().selectedSchool || []),
+              ...uniqueSelectedSchools,
               ...(skip === 0
-                ? response.data || []
-                : [...(get().schoolList || []), ...(response.data || [])]),
+                ? responseData
+                : [...(get().schoolList || []), ...responseData]),
             ],
           });
         } catch (error) {
