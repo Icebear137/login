@@ -144,15 +144,6 @@ export const UnitSelectors = ({
     }
   };
 
-  const handleSchoolChange = (value: { label: string; value: string }) => {
-    setSelectedSchoolId(value.value);
-    console.log("Selected school:", value.value);
-    const selectedSchools = allSchools.filter(
-      (school) => school.id.toString() === value.value
-    );
-    setSelectedSchool(selectedSchools);
-  };
-
   return (
     <Space direction="vertical" className="w-full">
       {/* Unit Level Selector */}
@@ -232,23 +223,19 @@ export const UnitSelectors = ({
             }
             fetchOptions={fetchSchoolOptions}
             onChange={(value) => {
-              // Nếu value là null hoặc undefined (khi clear)
+              // Handle the value properly based on the labelInValue prop
               if (!value) {
                 setSelectedSchoolId("");
                 return;
               }
-              // Kiểm tra nếu value là string (giá trị trực tiếp)
-              if (typeof value === "string") {
-                setSelectedSchoolId(value);
-                console.log("Selected school:", value);
-                const selectedSchools = allSchools.filter(
-                  (school) => school.id.toString() === value
-                );
-                setSelectedSchool(selectedSchools);
-                return;
-              }
-              // Xử lý khi value là object
-              handleSchoolChange(value as { label: string; value: string });
+
+              const selectedValue = (value as any).value;
+              setSelectedSchoolId(selectedValue);
+
+              const selectedSchools = allSchools.filter(
+                (school) => school.id.toString() === selectedValue
+              );
+              setSelectedSchool(selectedSchools);
             }}
             disabled={loading || !selectedSo}
             onScroll={handlePopupScroll}

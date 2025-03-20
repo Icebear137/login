@@ -12,7 +12,7 @@ export interface DebounceSelectProps<ValueType = any>
 }
 
 export function DebounceSelect<
-  ValueType extends { label: React.ReactNode; value: string | number } = any
+  ValueType extends { label: string; value: string } = any
 >({
   fetchOptions,
   debounceTimeout = 500,
@@ -64,7 +64,8 @@ export function DebounceSelect<
   };
 
   return (
-    <Select
+    <Select<ValueType>
+      labelInValue
       filterOption={false}
       onSearch={(value) => {
         if (value) {
