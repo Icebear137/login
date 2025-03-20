@@ -3,7 +3,7 @@ import Image from "next/image";
 export function LoginBackground() {
   return (
     <div
-      className="img-info flex-1/3 p-8"
+      className="img-info w-1/3 p-8"
       style={{
         backgroundImage:
           'url("https://devcms.thuvien.edu.vn/images/img-bg-login.png")',

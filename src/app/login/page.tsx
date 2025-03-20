@@ -1,14 +1,15 @@
 "use client";
-import { LoginBackground } from "./components/LoginBackground";
-import { LoginForm } from "./components/LoginForm";
 
-const LoginPage = () => {
+import { LoginBackground } from "../../components/login/LoginBackground";
+import { LoginForm } from "../../components/login/LoginForm";
+
+export default function LoginPage() {
   return (
-    <div className="login-page h-screen flex m-auto bg-gray-100 relative">
+    <div className="flex w-full min-h-screen">
       <LoginBackground />
-      <LoginForm />
+      <div className="w-2/3 flex justify-center items-center p-8">
+        <LoginForm />
+      </div>
     </div>
   );
-};
-
-export default LoginPage;
+}

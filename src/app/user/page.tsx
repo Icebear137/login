@@ -1,72 +1,73 @@
 "use client";
 import { useEffect, useState } from "react";
-import axios from "axios";
 import { useRouter } from "next/navigation";
-import { Button } from "antd";
-
-const getUserInfo = async (token: string) => {
-  try {
-    const response = await axios.get(
-      "https://devgwapi.thuvien.edu.vn/v1/user/get-current-user-info",
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-    return response.data;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } catch (error: any) {
-    console.error(
-      "Lỗi lấy thông tin người dùng:",
-      error.response?.data || error.message
-    );
-    throw new Error(
-      error.response?.data?.message || "Không thể lấy thông tin người dùng!"
-    );
-  }
-};
+import { Button, Card, Spin, message } from "antd";
+import { UserInfo } from "@/types/user";
+import { getUserInfo } from "@/services/userService";
+import { useAuthStore } from "@/stores/authStore";
 
 const UserPage: React.FC = () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [userInfo, setUserInfo] = useState<any>(null);
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const fetchUserInfo = async () => {
+      const token = localStorage.getItem("token");
 
-    if (!token) {
-      console.warn("Không tìm thấy token, chuyển hướng đến trang đăng nhập.");
-      router.push("/login");
-      return;
-    }
+      if (!token) {
+        message.warning("Vui lòng đăng nhập để tiếp tục");
+        router.push("/login");
+        return;
+      }
 
-    getUserInfo(token)
-      .then((data) => setUserInfo(data))
-      .catch(() => {
+      try {
+        const data = await getUserInfo(token);
+        setUserInfo(data);
+      } catch (error) {
+        message.error("Không thể lấy thông tin người dùng");
         localStorage.removeItem("token");
         router.push("/login");
-      });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUserInfo();
   }, [router]);
 
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    useAuthStore.setState({ isAuthenticated: false });
+    useAuthStore.setState({ token: null });
+    router.push("/login");
+    message.success("Đăng xuất thành công");
+  };
+
+  if (isLoading) {
+    return (
+      <div style={{ textAlign: "center", padding: "50px" }}>
+        <Spin size="large" />
+      </div>
+    );
+  }
+
   return (
-    <div>
-      <h1>User Page</h1>
-      <Button
-        type="primary"
-        danger
-        onClick={() => {
-          localStorage.removeItem("token");
-          router.push("/login");
-        }}
+    <div style={{ padding: "20px", maxWidth: "800px", margin: "0 auto" }}>
+      <Card
+        title="Thông tin người dùng"
+        extra={
+          <Button type="primary" danger onClick={handleLogout}>
+            Đăng xuất
+          </Button>
+        }
       >
-        Đăng xuất
-      </Button>
-      {userInfo ? (
-        <pre>{JSON.stringify(userInfo, null, 2)}</pre>
-      ) : (
-        <p>Đang tải thông tin người dùng...</p>
-      )}
+        {userInfo && (
+          <pre style={{ background: "#f5f5f5", padding: "15px" }}>
+            {JSON.stringify(userInfo, null, 2)}
+          </pre>
+        )}
+      </Card>
     </div>
   );
 };
