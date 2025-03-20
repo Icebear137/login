@@ -25,6 +25,7 @@ export const UnitSelectors = ({
     soList,
     phongList,
     isLoading,
+    selectedSchool,
     setSelectedSchool,
   } = useSchoolStore();
 
@@ -60,9 +61,9 @@ export const UnitSelectors = ({
         const updatedSchools =
           skip === 0 ? schoolList : [...prev, ...newSchools];
 
-        // Update school options whenever allSchools changes
         setSchoolOptions(
           updatedSchools.map((s) => ({
+            key: `list_${s.id}`, // Add unique key prefix
             value: s.id.toString(),
             label: s.name,
           }))
@@ -123,10 +124,17 @@ export const UnitSelectors = ({
         searchValue
       );
 
-      return (response.data || []).map((school) => ({
-        label: school.name,
-        value: school.id.toString(),
-      }));
+      // Create a Set of existing IDs to avoid duplicates
+      const existingIds = new Set(schoolOptions.map((opt) => opt.value));
+
+      // Filter out duplicates and map to options
+      return (response.data || [])
+        .filter((school) => !existingIds.has(school.id.toString()))
+        .map((school) => ({
+          key: `search_${school.id}`, // Add unique key prefix
+          label: school.name,
+          value: school.id.toString(),
+        }));
     } catch (error) {
       console.error("Error fetching school options:", error);
       return [];
@@ -143,6 +151,33 @@ export const UnitSelectors = ({
       loadMoreSchools(skip + 50);
     }
   };
+
+  // Get initial options for DebounceSelect with selected school at the top
+  const getInitialOptions = useCallback(() => {
+    const selectedOption = selectedSchool?.[0] && {
+      key: `selected_${selectedSchool[0].id}`, // Add unique key prefix
+      value: selectedSchool[0].id.toString(),
+      label: selectedSchool[0].name,
+    };
+
+    // Filter out duplicates from schoolOptions
+    const uniqueOptions = schoolOptions.reduce((acc, curr) => {
+      if (!acc.some((option) => option.value === curr.value)) {
+        acc.push({
+          ...curr,
+          key: `list_${curr.value}`, // Add unique key prefix
+        });
+      }
+      return acc;
+    }, [] as typeof schoolOptions);
+
+    return selectedOption
+      ? [
+          selectedOption,
+          ...uniqueOptions.filter((opt) => opt.value !== selectedOption.value),
+        ]
+      : uniqueOptions;
+  }, [schoolOptions, selectedSchool]);
 
   return (
     <Space direction="vertical" className="w-full">
@@ -173,6 +208,9 @@ export const UnitSelectors = ({
           onChange={(value) => {
             setSelectedSo(value);
             setSelectedSchoolId("");
+            setSelectedSchool([]);
+            setAllSchools([]);
+            setSchoolOptions([]);
           }}
           disabled={loading}
         />
@@ -198,6 +236,9 @@ export const UnitSelectors = ({
           onChange={(value) => {
             setSelectedPhong(value);
             setSelectedSchoolId("");
+            setSelectedSchool([]);
+            setAllSchools([]);
+            setSchoolOptions([]);
           }}
           disabled={loading || !selectedSo}
         />
@@ -214,32 +255,35 @@ export const UnitSelectors = ({
             value={
               selectedSchoolId
                 ? {
-                    label:
-                      schoolOptions.find((s) => s.value === selectedSchoolId)
-                        ?.label || "",
+                    label: selectedSchool?.[0]?.name || "",
                     value: selectedSchoolId,
                   }
-                : undefined
+                : null
             }
             fetchOptions={fetchSchoolOptions}
             onChange={(value) => {
-              // Handle the value properly based on the labelInValue prop
               if (!value) {
                 setSelectedSchoolId("");
+                setSelectedSchool([]);
                 return;
               }
 
               const selectedValue = (value as any).value;
-              setSelectedSchoolId(selectedValue);
+              const selectedLabel = (value as any).label;
 
-              const selectedSchools = allSchools.filter(
-                (school) => school.id.toString() === selectedValue
-              );
-              setSelectedSchool(selectedSchools);
+              setSelectedSchoolId(selectedValue);
+              // Create a new school object with the selected data
+              setSelectedSchool([
+                {
+                  id: Number(selectedValue),
+                  name: selectedLabel,
+                  // Add other required properties with default values if needed
+                } as School,
+              ]);
             }}
             disabled={loading || !selectedSo}
             onScroll={handlePopupScroll}
-            initialOptions={schoolOptions}
+            initialOptions={getInitialOptions()}
             listHeight={256}
             status={showError ? "error" : undefined}
           />

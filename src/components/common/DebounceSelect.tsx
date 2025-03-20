@@ -75,6 +75,10 @@ export function DebounceSelect<
           setOptions(initialOptions as ValueType[]);
         }
       }}
+      onClear={() => {
+        setSearching(false);
+        setOptions(initialOptions as ValueType[]);
+      }}
       notFoundContent={fetching ? <Spin size="small" /> : null}
       options={options}
       onPopupScroll={onScroll}
