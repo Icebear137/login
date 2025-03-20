@@ -2,7 +2,13 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { SchoolState, School } from "../types/schema";
 import { schoolService } from "../services/schoolService";
+import { useAuthStore } from "./authStore";
 import { debounce } from "lodash";
+
+const resetSelectedSchoolId = () => {
+  const { setSelectedSchoolId } = useAuthStore.getState();
+  setSelectedSchoolId(null);
+};
 
 const debouncedSearch = debounce(
   async (
@@ -41,7 +47,8 @@ export const useSchoolStore = create<SchoolState>()(
       isLoading: false,
 
       setUnitLevel: (level) => {
-        set({ unitLevel: level, schoolList: [] });
+        set({ unitLevel: level, schoolList: [], selectedSchool: [] });
+        resetSelectedSchoolId();
         if (level === "02" || level === "03" || level === "04") {
           get().fetchSoList();
           const { selectedSo } = get();
@@ -190,6 +197,34 @@ export const useSchoolStore = create<SchoolState>()(
 
       setSelectedSchool: (schools: School[]) => {
         set({ selectedSchool: schools });
+      },
+
+      fetchSchoolOptions: async (
+        selectedSo,
+        selectedPhong,
+        searchValue,
+        existingIds
+      ) => {
+        if (!selectedSo) return [];
+
+        try {
+          const response = await schoolService.searchSchools(
+            selectedSo,
+            selectedPhong,
+            searchValue
+          );
+
+          return (response.data || [])
+            .filter((school) => !existingIds.has(school.id.toString()))
+            .map((school) => ({
+              key: `search_${school.id}`,
+              value: school.id.toString(), // Make sure this matches the expected format
+              label: school.name, // Make sure this matches the expected format
+            }));
+        } catch (error) {
+          console.error("Error fetching school options:", error);
+          return [];
+        }
       },
     }),
     {

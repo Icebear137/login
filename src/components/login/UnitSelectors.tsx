@@ -3,9 +3,11 @@ import { School } from "../../types/schema";
 import { UNIT_LEVEL_OPTIONS } from "../../utils/constants";
 import { useSchoolStore } from "../../stores/schoolStore";
 import { useAuthStore } from "../../stores/authStore";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useCallback } from "react";
 import { schoolService } from "@/services/schoolService";
 import { DebounceSelect } from "@/components/common/DebounceSelect";
+import { useSchoolData } from "@/hooks/useSchoolData";
+import { useState } from "react";
 
 export const UnitSelectors = ({
   required = true,
@@ -27,6 +29,7 @@ export const UnitSelectors = ({
     isLoading,
     selectedSchool,
     setSelectedSchool,
+    fetchSchoolOptions: fetchSchoolOptionsFromStore,
   } = useSchoolStore();
 
   const {
@@ -35,23 +38,23 @@ export const UnitSelectors = ({
     isLoading: isAuthLoading,
   } = useAuthStore();
 
-  const loading = isLoading || isAuthLoading;
-  const [skip, setSkip] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
-  const [allSchools, setAllSchools] = useState<School[]>([]);
-  const [schoolOptions, setSchoolOptions] = useState<
-    { value: string; label: string }[]
-  >([]);
+  const {
+    skip,
+    setSkip,
+    hasMore,
+    setHasMore,
+    setAllSchools,
+    schoolOptions,
+    setSchoolOptions,
+  } = useSchoolData();
+
   const [showError, setShowError] = useState(false);
+  const loading = isLoading || isAuthLoading;
 
-  // Initialize data on component mount
   useEffect(() => {
-    if (!unitLevel) {
-      setUnitLevel("04");
-    } else setUnitLevel(unitLevel);
-  }, [setUnitLevel, unitLevel]);
+    if (!unitLevel) setUnitLevel("04");
+  }, []);
 
-  // Update allSchools when schoolList changes
   useEffect(() => {
     if (schoolList.length > 0) {
       setAllSchools((prev) => {
@@ -63,7 +66,7 @@ export const UnitSelectors = ({
 
         setSchoolOptions(
           updatedSchools.map((s) => ({
-            key: `list_${s.id}`, // Add unique key prefix
+            key: `list_${s.id}`,
             value: s.id.toString(),
             label: s.name,
           }))
@@ -75,7 +78,6 @@ export const UnitSelectors = ({
     }
   }, [schoolList, skip]);
 
-  // Reset pagination when So or Phong changes
   useEffect(() => {
     setSkip(0);
     setAllSchools([]);
@@ -83,7 +85,6 @@ export const UnitSelectors = ({
     setHasMore(true);
   }, [selectedSo, selectedPhong]);
 
-  // Add effect to handle validation
   useEffect(() => {
     if (required) {
       const isValid = !(unitLevel === "04" && !selectedSchoolId);
@@ -91,6 +92,39 @@ export const UnitSelectors = ({
       onValidationChange?.(isValid);
     }
   }, [selectedSchoolId, unitLevel, required, onValidationChange]);
+
+  // Handlers
+  const handleSoChange = (value: string) => {
+    setSelectedSo(value);
+    setSelectedSchoolId("");
+    setSelectedSchool([]);
+    setAllSchools([]);
+    setSchoolOptions([]);
+  };
+
+  const handlePhongChange = (value: string) => {
+    setSelectedPhong(value);
+    setSelectedSchoolId("");
+    setSelectedSchool([]);
+    setAllSchools([]);
+    setSchoolOptions([]);
+  };
+
+  const handleSchoolChange = (value: any) => {
+    if (!value) {
+      setSelectedSchoolId("");
+      setSelectedSchool([]);
+      return;
+    }
+
+    setSelectedSchoolId(value.value);
+    setSelectedSchool([
+      {
+        id: Number(value.value),
+        name: value.label,
+      } as School,
+    ]);
+  };
 
   const loadMoreSchools = useCallback(
     async (newSkip: number) => {
@@ -103,9 +137,7 @@ export const UnitSelectors = ({
           newSkip,
           50
         );
-
-        const schools = response.data || [];
-        useSchoolStore.setState({ schoolList: schools });
+        useSchoolStore.setState({ schoolList: response.data || [] });
         setSkip(newSkip);
       } catch (error) {
         console.error("Failed to load more schools:", error);
@@ -116,29 +148,13 @@ export const UnitSelectors = ({
 
   const fetchSchoolOptions = async (searchValue: string) => {
     if (!selectedSo) return [];
-
-    try {
-      const response = await schoolService.searchSchools(
-        selectedSo,
-        selectedPhong,
-        searchValue
-      );
-
-      // Create a Set of existing IDs to avoid duplicates
-      const existingIds = new Set(schoolOptions.map((opt) => opt.value));
-
-      // Filter out duplicates and map to options
-      return (response.data || [])
-        .filter((school) => !existingIds.has(school.id.toString()))
-        .map((school) => ({
-          key: `search_${school.id}`, // Add unique key prefix
-          label: school.name,
-          value: school.id.toString(),
-        }));
-    } catch (error) {
-      console.error("Error fetching school options:", error);
-      return [];
-    }
+    const existingIds = new Set(schoolOptions.map((opt) => opt.value));
+    return fetchSchoolOptionsFromStore(
+      selectedSo,
+      selectedPhong,
+      searchValue,
+      existingIds
+    );
   };
 
   const handlePopupScroll = (e: React.UIEvent<HTMLDivElement>) => {
@@ -152,20 +168,18 @@ export const UnitSelectors = ({
     }
   };
 
-  // Get initial options for DebounceSelect with selected school at the top
   const getInitialOptions = useCallback(() => {
     const selectedOption = selectedSchool?.[0] && {
-      key: `selected_${selectedSchool[0].id}`, // Add unique key prefix
+      key: `selected_${selectedSchool[0].id}`,
       value: selectedSchool[0].id.toString(),
       label: selectedSchool[0].name,
     };
 
-    // Filter out duplicates from schoolOptions
     const uniqueOptions = schoolOptions.reduce((acc, curr) => {
       if (!acc.some((option) => option.value === curr.value)) {
         acc.push({
           ...curr,
-          key: `list_${curr.value}`, // Add unique key prefix
+          key: `list_${curr.value}`,
         });
       }
       return acc;
@@ -181,7 +195,6 @@ export const UnitSelectors = ({
 
   return (
     <Space direction="vertical" className="w-full">
-      {/* Unit Level Selector */}
       <Select
         className="w-full"
         placeholder="Cấp đơn vị"
@@ -191,7 +204,6 @@ export const UnitSelectors = ({
         disabled={loading}
       />
 
-      {/* Sở Selector */}
       {(unitLevel === "02" || unitLevel === "03" || unitLevel === "04") && (
         <Select
           className="w-full"
@@ -205,18 +217,11 @@ export const UnitSelectors = ({
               ?.toLowerCase()
               .includes(input.toLowerCase())
           }
-          onChange={(value) => {
-            setSelectedSo(value);
-            setSelectedSchoolId("");
-            setSelectedSchool([]);
-            setAllSchools([]);
-            setSchoolOptions([]);
-          }}
+          onChange={handleSoChange}
           disabled={loading}
         />
       )}
 
-      {/* Phòng Selector */}
       {(unitLevel === "03" || unitLevel === "04") && (
         <Select
           className="w-full"
@@ -233,18 +238,11 @@ export const UnitSelectors = ({
               ?.toLowerCase()
               .includes(input.toLowerCase())
           }
-          onChange={(value) => {
-            setSelectedPhong(value);
-            setSelectedSchoolId("");
-            setSelectedSchool([]);
-            setAllSchools([]);
-            setSchoolOptions([]);
-          }}
+          onChange={handlePhongChange}
           disabled={loading || !selectedSo}
         />
       )}
 
-      {/* Trường Selector with Debounce */}
       {unitLevel === "04" && (
         <>
           <DebounceSelect
@@ -255,32 +253,14 @@ export const UnitSelectors = ({
             value={
               selectedSchoolId
                 ? {
-                    label: selectedSchool?.[0]?.name || "",
+                    key: `selected_${selectedSchoolId}`,
                     value: selectedSchoolId,
+                    label: selectedSchool?.[0]?.name || "",
                   }
                 : null
             }
             fetchOptions={fetchSchoolOptions}
-            onChange={(value) => {
-              if (!value) {
-                setSelectedSchoolId("");
-                setSelectedSchool([]);
-                return;
-              }
-
-              const selectedValue = (value as any).value;
-              const selectedLabel = (value as any).label;
-
-              setSelectedSchoolId(selectedValue);
-              // Create a new school object with the selected data
-              setSelectedSchool([
-                {
-                  id: Number(selectedValue),
-                  name: selectedLabel,
-                  // Add other required properties with default values if needed
-                } as School,
-              ]);
-            }}
+            onChange={handleSchoolChange}
             disabled={loading || !selectedSo}
             onScroll={handlePopupScroll}
             initialOptions={getInitialOptions()}
@@ -293,7 +273,6 @@ export const UnitSelectors = ({
         </>
       )}
 
-      {/* Đơn vị đối tác Selector */}
       {unitLevel === "05" && (
         <Select
           className="w-full"
