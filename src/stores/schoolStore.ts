@@ -7,7 +7,12 @@ import { debounce } from "lodash";
 
 const resetSelectedSchoolId = () => {
   const { setSelectedSchoolId } = useAuthStore.getState();
-  setSelectedSchoolId(null);
+  setSelectedSchoolId("");
+};
+
+const setSelectedSchoolId = (schoolId: string) => {
+  const { setSelectedSchoolId } = useAuthStore.getState();
+  setSelectedSchoolId(schoolId);
 };
 
 const debouncedSearch = debounce(
@@ -47,18 +52,41 @@ export const useSchoolStore = create<SchoolState>()(
       isLoading: false,
 
       setUnitLevel: (level) => {
-        set({ unitLevel: level, schoolList: [], selectedSchool: [] });
+        set({ unitLevel: level, schoolList: [] });
         resetSelectedSchoolId();
-        if (level === "02" || level === "03" || level === "04") {
+
+        if (level === "02") {
+          get().fetchSoList();
+          const { selectedSo, soList } = get();
+          const selectedSoData = soList.find(
+            (s) => s.doetCode === selectedSo
+          )?.id;
+          setSelectedSchoolId(selectedSoData?.toString() || "");
+        }
+        if (level === "03") {
+          get().fetchSoList();
+          const { selectedSo, soList } = get();
+          if (selectedSo) {
+            get().fetchPhongList(selectedSo);
+            const selectedSoData = soList.find(
+              (s) => s.doetCode === selectedSo
+            )?.id;
+            setSelectedSchoolId(selectedSoData?.toString() || "");
+          }
+        }
+        if (level === "04") {
           get().fetchSoList();
           const { selectedSo } = get();
           if (selectedSo) {
             get().fetchPhongList(selectedSo);
             get().fetchSchoolList(selectedSo, null, 0);
+            const { selectedSchool } = get();
+            setSelectedSchoolId(selectedSchool?.[0]?.id.toString() || "");
           }
         }
         if (level === "05") {
           get().fetchPartnerList();
+          resetSelectedSchoolId();
         }
       },
 

@@ -18,14 +18,13 @@ export const LoginForm: React.FC = () => {
   const router = useRouter();
   const { setUsername, setPassword, login } = useAuthStore();
   const [form] = Form.useForm();
-  const [isSchoolValid, setIsSchoolValid] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async (values: LoginFormValues) => {
-    if (!isSchoolValid) {
-      toast.error("Vui lòng chọn trường!");
-      return;
-    }
+    // if (!isSchoolValid) {
+    //   toast.error("Vui lòng chọn trường!");
+    //   return;
+    // }
 
     setLoading(true);
     try {
@@ -45,7 +44,7 @@ export const LoginForm: React.FC = () => {
     <div className="w-2/3">
       <Space direction="vertical" size="large" className="w-full">
         <Card title="THÔNG TIN ĐƠN VỊ" className={styles.loginCard}>
-          <UnitSelectors onValidationChange={setIsSchoolValid} />
+          <UnitSelectors />
         </Card>
         <Card title="THÔNG TIN TÀI KHOẢN" className={styles.loginCard}>
           <Form
