@@ -3,9 +3,9 @@ import { School } from "../../types/schema";
 import { UNIT_LEVEL_OPTIONS } from "../../utils/constants";
 import { useSchoolStore } from "../../stores/schoolStore";
 import { useAuthStore } from "../../stores/authStore";
-import { useSchoolSearch } from "@/hooks/useSchoolSearch";
 import { useEffect, useState, useCallback } from "react";
 import { schoolService } from "@/services/schoolService";
+import { DebounceSelect } from "@/components/common/DebounceSelect";
 
 export const UnitSelectors = ({
   required = true,
@@ -34,19 +34,10 @@ export const UnitSelectors = ({
     isLoading: isAuthLoading,
   } = useAuthStore();
 
-  const {
-    handleSearch: debouncedSearch,
-    resetSearchQuery,
-    searchQuery,
-  } = useSchoolSearch();
-  const [searchValue, setSearchValue] = useState("");
-
   const loading = isLoading || isAuthLoading;
   const [skip, setSkip] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [allSchools, setAllSchools] = useState<School[]>([]);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [isSearching, setIsSearching] = useState(false);
   const [showError, setShowError] = useState(false);
 
   // Initialize data on component mount
@@ -58,20 +49,14 @@ export const UnitSelectors = ({
 
   // Update allSchools when schoolList changes
   useEffect(() => {
-    if (isSearching) {
-      // During search, replace the entire list
-      setAllSchools(schoolList);
-    } else {
-      // During normal scroll, append to list
-      setAllSchools((prev) => {
-        const newSchools = schoolList.filter(
-          (school) => !prev.some((s) => s.id === school.id)
-        );
-        return skip === 0 ? schoolList : [...prev, ...newSchools];
-      });
-    }
-    setHasMore(schoolList.length === 50 && !isSearching);
-  }, [schoolList, skip, isSearching]);
+    setAllSchools((prev) => {
+      const newSchools = schoolList.filter(
+        (school) => !prev.some((s) => s.id === school.id)
+      );
+      return skip === 0 ? schoolList : [...prev, ...newSchools];
+    });
+    setHasMore(schoolList.length === 50);
+  }, [schoolList, skip]);
 
   // Reset pagination when So or Phong changes
   useEffect(() => {
@@ -92,7 +77,6 @@ export const UnitSelectors = ({
   const loadMoreSchools = useCallback(
     async (newSkip: number) => {
       if (!selectedSo) return;
-      if (searchValue.trim()) return;
 
       try {
         const response = await schoolService.fetchSchoolList(
@@ -109,46 +93,46 @@ export const UnitSelectors = ({
         console.error("Failed to load more schools:", error);
       }
     },
-    [selectedSo, selectedPhong, searchValue]
+    [selectedSo, selectedPhong]
   );
 
-  const handleSchoolSearch = useCallback(
-    (value: string) => {
-      setSearchValue(value);
-      setSkip(0);
-      if (value.trim()) {
-        setIsSearching(true);
-        debouncedSearch(selectedSo || "", selectedPhong || "", value || "");
-      } else {
-        setIsSearching(false);
-        loadMoreSchools(0);
-      }
-    },
-    [selectedSo, selectedPhong, debouncedSearch, loadMoreSchools]
-  );
+  const fetchSchoolOptions = async (searchValue: string) => {
+    if (!selectedSo) return [];
 
-  const handlePopupScroll = useCallback(
-    (e: React.UIEvent<HTMLDivElement>) => {
-      const target = e.target as HTMLDivElement;
-      if (
-        target.scrollTop + target.clientHeight >= target.scrollHeight - 20 &&
-        !loading &&
-        hasMore
-      ) {
-        loadMoreSchools(skip + 50);
-      }
-    },
-    [loading, hasMore, skip, loadMoreSchools]
-  );
+    try {
+      const response = await schoolService.searchSchools(
+        selectedSo,
+        selectedPhong,
+        searchValue
+      );
 
-  const handleDropdownVisibleChange = (open: boolean) => {
-    setIsDropdownOpen(open);
-    if (!open) {
-      setSearchValue("");
-      setIsSearching(false);
-      resetSearchQuery();
-      loadMoreSchools(0);
+      return (response.data || []).map((school) => ({
+        label: school.name,
+        value: school.id.toString(),
+      }));
+    } catch (error) {
+      console.error("Error fetching school options:", error);
+      return [];
     }
+  };
+
+  const handlePopupScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLDivElement;
+    if (
+      target.scrollTop + target.clientHeight >= target.scrollHeight - 20 &&
+      !loading &&
+      hasMore
+    ) {
+      loadMoreSchools(skip + 50);
+    }
+  };
+
+  const handleSchoolChange = (value: string) => {
+    setSelectedSchoolId(value);
+    const selectedSchools = allSchools.filter(
+      (school) => school.id.toString() === value
+    );
+    setSelectedSchool(selectedSchools);
   };
 
   return (
@@ -210,62 +194,24 @@ export const UnitSelectors = ({
         />
       )}
 
-      {/* Trường Selector  */}
+      {/* Trường Selector with Debounce */}
       {unitLevel === "04" && (
         <>
-          <Select
+          <DebounceSelect
             className={`w-full ${showError ? "border-red-500" : ""}`}
             allowClear
             showSearch
             placeholder="Trường"
             value={selectedSchoolId}
-            onSearch={handleSchoolSearch}
-            searchValue={searchValue || searchQuery}
-            onChange={(value) => {
-              setSelectedSchoolId(value);
-              const selectedSchools = allSchools.filter(
-                (school) => school.id.toString() === value
-              );
-              setSelectedSchool(selectedSchools);
-              resetSearchQuery();
-            }}
-            onClear={() => {
-              setSearchValue("");
-              resetSearchQuery();
-              loadMoreSchools(0);
-            }}
+            fetchOptions={fetchSchoolOptions}
+            onChange={handleSchoolChange}
             disabled={loading || !selectedSo}
-            onPopupScroll={handlePopupScroll}
-            listHeight={256}
-            filterOption={false}
-            options={allSchools.map((s) => ({
+            onScroll={handlePopupScroll}
+            initialOptions={allSchools.map((s) => ({
               value: s.id.toString(),
               label: s.name,
             }))}
-            notFoundContent={loading ? <Spin size="small" /> : "Không tìm thấy"}
-            dropdownRender={(menu) => (
-              <div>
-                {menu}
-                {loading && (
-                  <div style={{ textAlign: "center", padding: "8px 0" }}>
-                    <Spin size="small" />
-                  </div>
-                )}
-                {!hasMore && allSchools.length > 0 && !searchValue && (
-                  <div
-                    style={{
-                      textAlign: "center",
-                      padding: "8px 0",
-                      color: "#999",
-                    }}
-                  >
-                    Đã hiển thị tất cả
-                  </div>
-                )}
-              </div>
-            )}
-            open={isDropdownOpen}
-            onDropdownVisibleChange={handleDropdownVisibleChange}
+            listHeight={256}
             status={showError ? "error" : undefined}
           />
           {showError && (
