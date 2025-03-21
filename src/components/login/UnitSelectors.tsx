@@ -53,7 +53,7 @@ export const UnitSelectors = ({
   const loading = isLoading || isAuthLoading;
 
   useEffect(() => {
-    if (!unitLevel) setUnitLevel(unitLevel || undefined);
+    if (unitLevel) setUnitLevel(unitLevel || undefined);
   }, [unitLevel, setUnitLevel]);
 
   useEffect(() => {
