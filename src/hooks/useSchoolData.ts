@@ -51,6 +51,27 @@ export const useSchoolData = () => {
     );
   };
 
+  const handleSchoolOptionsSearch = async (
+    searchValue: string,
+    page = 0,
+    selectedSo: string | null,
+    selectedPhong: string | null
+  ) => {
+    const skip = page * 50;
+    const response = await schoolService.searchSchools(
+      selectedSo,
+      selectedPhong,
+      searchValue,
+      skip,
+      50
+    );
+
+    return response.data.map((school) => ({
+      value: school.id.toString(),
+      label: school.name,
+    }));
+  };
+
   return {
     skip,
     setSkip,
@@ -62,5 +83,6 @@ export const useSchoolData = () => {
     setSchoolOptions,
     loadMoreSchools,
     fetchSchoolOptions,
+    handleSchoolOptionsSearch,
   };
 };

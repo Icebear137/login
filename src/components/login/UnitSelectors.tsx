@@ -28,7 +28,6 @@ export const UnitSelectors = ({
     isLoading,
     selectedSchool,
     setSelectedSchool,
-    fetchSchoolOptions: fetchSchoolOptionsFromStore,
   } = useSchoolStore();
 
   const {
@@ -46,7 +45,7 @@ export const UnitSelectors = ({
     schoolOptions,
     setSchoolOptions,
     loadMoreSchools: loadMoreSchoolsFromHook,
-    fetchSchoolOptions: fetchSchoolOptionsFromHook,
+    handleSchoolOptionsSearch,
   } = useSchoolData();
 
   const [showError, setShowError] = useState(false);
@@ -171,7 +170,7 @@ export const UnitSelectors = ({
           ?.id?.toString() || ""
       );
     } else {
-      setSelectedSchoolId(null);
+      setSelectedSchoolId("");
     }
   };
 
@@ -186,18 +185,15 @@ export const UnitSelectors = ({
     }
   };
 
-  const handleSchoolOptionsSearch = async (searchValue: string) => {
-    return fetchSchoolOptionsFromHook(
+  const wrappedHandleSchoolOptionsSearch = async (
+    searchValue: string,
+    page = 0
+  ) => {
+    return handleSchoolOptionsSearch(
       searchValue,
+      page,
       selectedSo,
-      selectedPhong,
-      (selectedSo, selectedPhong, searchValue, existingIds) =>
-        fetchSchoolOptionsFromStore(
-          selectedSo,
-          selectedPhong || "",
-          searchValue,
-          existingIds
-        )
+      selectedPhong
     );
   };
 
@@ -292,7 +288,7 @@ export const UnitSelectors = ({
                   }
                 : undefined
             }
-            fetchOptions={handleSchoolOptionsSearch}
+            fetchOptions={wrappedHandleSchoolOptionsSearch}
             onChange={handleSchoolChange}
             disabled={loading || !selectedSo}
             onScroll={handlePopupScroll}

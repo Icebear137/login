@@ -7,7 +7,7 @@ import { debounce } from "lodash";
 
 const resetSelectedSchoolId = () => {
   const { setSelectedSchoolId } = useAuthStore.getState();
-  setSelectedSchoolId("");
+  setSelectedSchoolId(null);
 };
 
 const setSelectedSchoolId = (schoolId: string) => {
