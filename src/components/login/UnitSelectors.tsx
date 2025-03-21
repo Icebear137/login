@@ -46,6 +46,8 @@ export const UnitSelectors = ({
     setAllSchools,
     schoolOptions,
     setSchoolOptions,
+    loadMoreSchools: loadMoreSchoolsFromHook,
+    fetchSchoolOptions: fetchSchoolOptionsFromHook,
   } = useSchoolData();
 
   const [showError, setShowError] = useState(false);
@@ -117,7 +119,7 @@ export const UnitSelectors = ({
           ?.id?.toString() || ""
       );
     } else if (unitLevel === "04") {
-      setSelectedSchoolId("");
+      setSelectedSchoolId(selectedSchool?.[0]?.id?.toString() || "");
     }
   }, [unitLevel, selectedSo, selectedPhong, soList, phongList]);
 
@@ -139,7 +141,6 @@ export const UnitSelectors = ({
     setSelectedPhong(value);
     setSelectedSchool([]);
     setAllSchools([]);
-    // setUnitLevel(value);
   };
 
   const handleSchoolChange = (value: any) => {
@@ -175,37 +176,6 @@ export const UnitSelectors = ({
     }
   };
 
-  const loadMoreSchools = useCallback(
-    async (newSkip: number) => {
-      if (!selectedSo) return;
-
-      try {
-        const response = await schoolService.fetchSchoolList(
-          selectedSo,
-          selectedPhong,
-          newSkip,
-          50
-        );
-        useSchoolStore.setState({ schoolList: response.data || [] });
-        setSkip(newSkip);
-      } catch (error) {
-        console.error("Failed to load more schools:", error);
-      }
-    },
-    [selectedSo, selectedPhong]
-  );
-
-  const fetchSchoolOptions = async (searchValue: string) => {
-    if (!selectedSo) return [];
-    const existingIds = new Set(schoolOptions.map((opt) => opt.value));
-    return fetchSchoolOptionsFromStore(
-      selectedSo,
-      selectedPhong,
-      searchValue,
-      existingIds
-    );
-  };
-
   const handlePopupScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const target = e.target as HTMLDivElement;
     if (
@@ -213,8 +183,17 @@ export const UnitSelectors = ({
       !loading &&
       hasMore
     ) {
-      loadMoreSchools(skip + 50);
+      loadMoreSchoolsFromHook(skip + 50, selectedSo, selectedPhong);
     }
+  };
+
+  const handleSchoolOptionsSearch = async (searchValue: string) => {
+    return fetchSchoolOptionsFromHook(
+      searchValue,
+      selectedSo,
+      selectedPhong,
+      fetchSchoolOptionsFromStore
+    );
   };
 
   const getInitialOptions = useCallback(() => {
@@ -308,7 +287,7 @@ export const UnitSelectors = ({
                   }
                 : undefined
             }
-            fetchOptions={fetchSchoolOptions}
+            fetchOptions={handleSchoolOptionsSearch}
             onChange={handleSchoolChange}
             disabled={loading || !selectedSo}
             onScroll={handlePopupScroll}
