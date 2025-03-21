@@ -4,7 +4,6 @@ import { UNIT_LEVEL_OPTIONS } from "../../utils/constants";
 import { useSchoolStore } from "../../stores/schoolStore";
 import { useAuthStore } from "../../stores/authStore";
 import { useEffect, useCallback } from "react";
-import { schoolService } from "@/services/schoolService";
 import { DebounceSelect } from "@/components/common/DebounceSelect";
 import { useSchoolData } from "@/hooks/useSchoolData";
 import { useState } from "react";
@@ -54,8 +53,8 @@ export const UnitSelectors = ({
   const loading = isLoading || isAuthLoading;
 
   useEffect(() => {
-    if (!unitLevel) setUnitLevel(unitLevel || "02");
-  }, []);
+    if (!unitLevel) setUnitLevel(unitLevel || undefined);
+  }, [unitLevel, setUnitLevel]);
 
   useEffect(() => {
     if (schoolList.length > 0) {
@@ -192,7 +191,13 @@ export const UnitSelectors = ({
       searchValue,
       selectedSo,
       selectedPhong,
-      fetchSchoolOptionsFromStore
+      (selectedSo, selectedPhong, searchValue, existingIds) =>
+        fetchSchoolOptionsFromStore(
+          selectedSo,
+          selectedPhong || "",
+          searchValue,
+          existingIds
+        )
     );
   };
 

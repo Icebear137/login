@@ -11,8 +11,8 @@ export const useSchoolData = () => {
 
   const loadMoreSchools = async (
     newSkip: number,
-    selectedSo: string,
-    selectedPhong?: string
+    selectedSo: string | null,
+    selectedPhong: string | null
   ) => {
     if (!selectedSo) return;
 
@@ -32,9 +32,14 @@ export const useSchoolData = () => {
 
   const fetchSchoolOptions = async (
     searchValue: string,
-    selectedSo: string,
-    selectedPhong: string | undefined,
-    fetchSchoolOptionsFromStore: Function
+    selectedSo: string | null,
+    selectedPhong: string | null,
+    fetchSchoolOptionsFromStore: (
+      selectedSo: string,
+      selectedPhong: string | null,
+      searchValue: string,
+      existingIds: Set<string>
+    ) => Promise<SchoolOption[]>
   ) => {
     if (!selectedSo) return [];
     const existingIds = new Set(schoolOptions.map((opt) => opt.value));
