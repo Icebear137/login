@@ -83,6 +83,19 @@ export function DebounceSelect<
     }
   };
 
+  const clearSearchState = () => {
+    setSearching(false);
+    setOptions(initialOptions as ValueType[]);
+    setSearchText("");
+    setCurrentPage(0);
+  };
+
+  const handleDropdownVisibleChange = (open: boolean) => {
+    if (!open) {
+      clearSearchState();
+    }
+  };
+
   return (
     <Select<ValueType>
       labelInValue
@@ -92,20 +105,14 @@ export function DebounceSelect<
         if (value) {
           debounceFetcher(value);
         } else {
-          setSearching(false);
-          setOptions(initialOptions as ValueType[]);
+          clearSearchState();
         }
       }}
-      onClear={() => {
-        setSearching(false);
-        setOptions(initialOptions as ValueType[]);
-        setSearchText("");
-        setCurrentPage(0);
-      }}
+      onClear={clearSearchState}
       notFoundContent={fetching ? <Spin size="small" /> : null}
       options={options}
       onPopupScroll={handlePopupScroll}
-      // onDropdownVisibleChange={handleDropdownVisibleChange}
+      onDropdownVisibleChange={handleDropdownVisibleChange}
       {...props}
     />
   );
