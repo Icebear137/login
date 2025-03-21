@@ -65,13 +65,13 @@ export const useSchoolStore = create<SchoolState>()(
         }
         if (level === "03") {
           get().fetchSoList();
-          const { selectedSo, soList } = get();
-          if (selectedSo) {
+          const { selectedSo, selectedPhong, phongList } = get();
+          if (selectedSo && selectedPhong) {
             get().fetchPhongList(selectedSo);
-            const selectedSoData = soList.find(
+            const selectedPhongData = phongList.find(
               (s) => s.doetCode === selectedSo
             )?.id;
-            setSelectedSchoolId(selectedSoData?.toString() || "");
+            setSelectedSchoolId(selectedPhongData?.toString() || "");
           }
         }
         if (level === "04") {
