@@ -171,7 +171,7 @@ export const UnitSelectors = ({
           ?.id?.toString() || ""
       );
     } else {
-      setSelectedSchoolId("");
+      setSelectedSchoolId(null);
     }
   };
 
