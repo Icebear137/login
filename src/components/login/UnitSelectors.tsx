@@ -10,6 +10,11 @@ import { DebounceSelect } from "@/components/common/DebounceSelect";
 import { useSchoolData } from "@/hooks/useSchoolData";
 import { useState } from "react";
 
+interface LabeledValue {
+  value: string;
+  label: string;
+}
+
 export const UnitSelectors = ({
   required = true,
   onValidationChange,
@@ -143,17 +148,29 @@ export const UnitSelectors = ({
   const handleSoChange = useCallback(
     (value: string) => {
       setSelectedSo(value);
+      // Reset trường và phòng khi đổi Sở
+      setSelectedPhong(null);
       setSelectedSchool([]);
+      setSelectedSchoolId(null);
       setAllSchools([]);
       setSchoolOptions([]);
     },
-    [setSelectedSo, setSelectedSchool, setAllSchools, setSchoolOptions]
+    [
+      setSelectedSo,
+      setSelectedPhong,
+      setSelectedSchool,
+      setSelectedSchoolId,
+      setAllSchools,
+      setSchoolOptions,
+    ]
   );
 
   const handlePhongChange = useCallback(
     (value: string) => {
       setSelectedPhong(value);
+      // Reset trường khi clear phòng
       setSelectedSchool([]);
+      setSelectedSchoolId(null);
       setAllSchools([]);
       setSchoolOptions([]);
 
@@ -166,6 +183,7 @@ export const UnitSelectors = ({
     [
       setSelectedPhong,
       setSelectedSchool,
+      setSelectedSchoolId,
       setAllSchools,
       setSchoolOptions,
       selectedSo,
@@ -176,15 +194,20 @@ export const UnitSelectors = ({
   );
 
   const handleSchoolChange = useCallback(
-    (value: SchoolOption | string | null) => {
+    (value: LabeledValue | LabeledValue[] | string | null) => {
       if (!value) {
         setSelectedSchoolId("");
         setSelectedSchool([]);
         return;
       }
 
-      // Nếu value là object (SchoolOption)
-      if (typeof value === "object") {
+      // Nếu value có thuộc tính value và label (conforming to labelInValue format)
+      if (
+        typeof value === "object" &&
+        !Array.isArray(value) &&
+        "value" in value &&
+        "label" in value
+      ) {
         setSelectedSchoolId(value.value);
         setSelectedSchool([
           {
@@ -192,6 +215,22 @@ export const UnitSelectors = ({
             name: value.label,
           } as School,
         ]);
+      }
+      // Nếu value là một mảng (multiple select)
+      else if (Array.isArray(value)) {
+        if (value.length > 0) {
+          const firstItem = value[0];
+          setSelectedSchoolId(firstItem.value);
+          setSelectedSchool([
+            {
+              id: Number(firstItem.value),
+              name: firstItem.label,
+            } as School,
+          ]);
+        } else {
+          setSelectedSchoolId("");
+          setSelectedSchool([]);
+        }
       }
       // Nếu value là string (giá trị ID)
       else if (typeof value === "string") {
@@ -223,9 +262,10 @@ export const UnitSelectors = ({
       const target = e.target as HTMLDivElement;
       if (
         // Kiểm tra đã cuộn gần đến cuối chưa
-        target.scrollTop + target.clientHeight >= target.scrollHeight - 20 &&
+        target.scrollTop + target.clientHeight >= target.scrollHeight - 50 &&
         !loading &&
-        hasMore
+        hasMore &&
+        !isSearching()
       ) {
         // Đặt dropdown open = true để đảm bảo không bị đóng khi tải dữ liệu
         if (unitLevel === "04") {
@@ -233,12 +273,31 @@ export const UnitSelectors = ({
         } else if (unitLevel === "05") {
           setOpenPartnerDropdown(true);
         }
-
-        // Gọi API với page > 0 để kích hoạt tải thêm dữ liệu
-        wrappedHandleSchoolOptionsSearch("", 1);
       }
     },
-    [loading, hasMore, unitLevel, setOpenSchoolDropdown, setOpenPartnerDropdown]
+    [loading, hasMore, unitLevel, isSearching]
+  );
+
+  const fetchSchoolOptions = useCallback(
+    async (searchValue: string, page: number = 0): Promise<SchoolOption[]> => {
+      if (!selectedSo) {
+        return [];
+      }
+
+      try {
+        const options = await handleSchoolOptionsSearch(
+          searchValue,
+          page,
+          selectedSo,
+          selectedPhong
+        );
+        return options;
+      } catch (error) {
+        console.error("Lỗi khi tìm kiếm trường:", error);
+        return [];
+      }
+    },
+    [handleSchoolOptionsSearch, selectedSo, selectedPhong]
   );
 
   // Handler khi mở/đóng dropdown của trường
@@ -254,10 +313,10 @@ export const UnitSelectors = ({
       if (visible && !loading) {
         // Khi mở dropdown, reset và tải dữ liệu ban đầu
         setSkip(0);
-        wrappedHandleSchoolOptionsSearch("", 0);
+        fetchSchoolOptions("", 0);
       }
     },
-    [loading, isSearching, setSkip]
+    [loading, isSearching, setSkip, fetchSchoolOptions]
   );
 
   // Handler khi mở/đóng dropdown của đối tác
@@ -273,37 +332,10 @@ export const UnitSelectors = ({
       if (visible && !loading) {
         // Khi mở dropdown, reset và tải dữ liệu ban đầu
         setSkip(0);
-        wrappedHandleSchoolOptionsSearch("", 0);
+        fetchSchoolOptions("", 0);
       }
     },
-    [loading, isSearching, setSkip]
-  );
-
-  // Wrap hàm search để thêm xử lý đồng bộ dropdown
-  const wrappedHandleSchoolOptionsSearch = useCallback(
-    async (searchValue: string, page = 0) => {
-      // Đảm bảo dropdown vẫn mở khi tìm kiếm
-      if (unitLevel === "04") {
-        setOpenSchoolDropdown(true);
-      } else if (unitLevel === "05") {
-        setOpenPartnerDropdown(true);
-      }
-
-      return handleSchoolOptionsSearch(
-        searchValue,
-        page,
-        selectedSo,
-        selectedPhong
-      );
-    },
-    [
-      unitLevel,
-      handleSchoolOptionsSearch,
-      selectedSo,
-      selectedPhong,
-      setOpenSchoolDropdown,
-      setOpenPartnerDropdown,
-    ]
+    [loading, isSearching, setSkip, fetchSchoolOptions]
   );
 
   // Danh sách options ban đầu - cache để tránh tính toán lại
@@ -406,7 +438,7 @@ export const UnitSelectors = ({
           open={openSchoolDropdown}
           onDropdownVisibleChange={handleSchoolDropdownVisibleChange}
           onScroll={handlePopupScroll}
-          fetchOptions={wrappedHandleSchoolOptionsSearch}
+          fetchOptions={fetchSchoolOptions}
           initialOptions={getInitialOptions()}
           disabled={loading}
         />
@@ -432,7 +464,7 @@ export const UnitSelectors = ({
           open={openPartnerDropdown}
           onDropdownVisibleChange={handlePartnerDropdownVisibleChange}
           onScroll={handlePopupScroll}
-          fetchOptions={wrappedHandleSchoolOptionsSearch}
+          fetchOptions={fetchSchoolOptions}
           initialOptions={getInitialOptions()}
           disabled={loading}
         />

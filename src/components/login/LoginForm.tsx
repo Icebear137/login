@@ -61,7 +61,7 @@ export const LoginForm: React.FC = () => {
 
   const handleLogin = async (values: LoginFormValues) => {
     if (!selectedSchoolId) {
-      toast.warn("Vui lòng chọn đơn vị trước khi đăng nhập");
+      toast.warn("Vui lòng chọn đầy đủ thông tin đơn vị trước khi đăng nhập");
       return;
     }
 

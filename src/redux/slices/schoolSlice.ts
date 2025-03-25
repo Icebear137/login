@@ -57,7 +57,7 @@ const schoolSlice = createSlice({
       state.isLoading = false;
       state.error = action.payload;
     },
-    fetchPhongListRequest: (state, _action: PayloadAction<string>) => {
+    fetchPhongListRequest: (state) => {
       state.isLoading = true;
       state.error = null;
     },
@@ -69,15 +69,7 @@ const schoolSlice = createSlice({
       state.isLoading = false;
       state.error = action.payload;
     },
-    fetchSchoolListRequest: (
-      state,
-      _action: PayloadAction<{
-        doetCode: string | null;
-        divisionCode: string | null;
-        skip?: number;
-        take?: number;
-      }>
-    ) => {
+    fetchSchoolListRequest: (state) => {
       state.isLoading = true;
       state.error = null;
     },
@@ -130,13 +122,9 @@ const schoolSlice = createSlice({
       state.error = action.payload;
     },
     searchSchoolsRequest: (
-      state,
-      _action: PayloadAction<{
-        doetCode: string | null;
-        divisionCode: string | null;
-        keyword: string;
-        skip?: number;
-      }>
+      state
+      // Truyền vào các tham số để typescript hiểu kiểu dữ liệu khi gọi,
+      // nhưng kiểu trả về không sử dụng tham số này
     ) => {
       state.isLoading = true;
       state.error = null;
@@ -150,18 +138,24 @@ const schoolSlice = createSlice({
     ) => {
       const { schools, skip } = action.payload;
 
+      // Nếu là trang đầu tiên, thay thế toàn bộ danh sách
       if (skip === 0) {
-        // Nếu skip = 0, thay thế danh sách
         state.schoolList = schools;
-      } else {
-        // Nếu skip > 0, thêm vào danh sách hiện tại
-        const uniqueNewSchools = schools.filter(
-          (newSchool) =>
-            !state.schoolList.some(
-              (existingSchool) => existingSchool.id === newSchool.id
-            )
+      }
+      // Nếu không, thêm các trường mới vào (loại bỏ trùng lặp)
+      else {
+        // Tạo Set lưu ID của các trường đã có
+        const existingIds = new Set(
+          state.schoolList.map((school) => school.id)
         );
-        state.schoolList = [...state.schoolList, ...uniqueNewSchools];
+
+        // Lọc ra các trường mới (không trùng lặp)
+        const newSchools = schools.filter(
+          (school) => !existingIds.has(school.id)
+        );
+
+        // Thêm vào danh sách hiện tại
+        state.schoolList = [...state.schoolList, ...newSchools];
       }
 
       state.isLoading = false;
@@ -170,14 +164,7 @@ const schoolSlice = createSlice({
       state.isLoading = false;
       state.error = action.payload;
     },
-    debouncedSearchRequest: (
-      state,
-      _action: PayloadAction<{
-        doetCode: string;
-        divisionCode: string | null;
-        keyword: string;
-      }>
-    ) => {
+    debouncedSearchRequest: (state) => {
       state.isLoading = true;
     },
   },

@@ -1,12 +1,6 @@
 "use client";
 
-import React, {
-  useMemo,
-  useRef,
-  useState,
-  useEffect,
-  useCallback,
-} from "react";
+import React, { useMemo, useRef, useState, useCallback } from "react";
 import { Select, Spin } from "antd";
 import type { SelectProps } from "antd";
 import debounce from "lodash/debounce";
@@ -31,178 +25,139 @@ export function DebounceSelect<
   debounceTimeout = 500,
   initialOptions = [],
   onScroll,
-  open,
-  onDropdownVisibleChange,
   ...props
 }: DebounceSelectProps<ValueType>) {
   const [fetching, setFetching] = useState(false);
   const [options, setOptions] = useState<SchoolOption[]>(initialOptions);
   const [currentPage, setCurrentPage] = useState(0);
-  const [searching, setSearching] = useState(false);
-  const [internalOpen, setInternalOpen] = useState(false);
-  const [searchText, setSearchText] = useState<string>("");
   const fetchRef = useRef(0);
-  const searchInputRef = useRef<string>("");
-  const hasLoadedInitialData = useRef(false);
+  const searchTextRef = useRef<string>("");
+  const loadingInitialDataRef = useRef(false);
 
-  // Sử dụng open từ props nếu được cung cấp, ngược lại sử dụng trạng thái nội bộ
-  const isOpen = open !== undefined ? open : internalOpen;
-
-  // Reset trạng thái tìm kiếm khi dropdown đóng
-  const clearSearchState = useCallback(() => {
-    setSearching(false);
-    searchInputRef.current = "";
-    setSearchText("");
-    setCurrentPage(0);
-  }, []);
-
-  // Tải dữ liệu ban đầu khi mở dropdown
-  const loadInitialOptions = useCallback(async () => {
-    if ((options.length === 0 || !hasLoadedInitialData.current) && !fetching) {
-      setFetching(true);
-      hasLoadedInitialData.current = true;
+  // Tải dữ liệu ban đầu
+  const loadInitialData = useCallback(async () => {
+    if (options.length === 0 && !loadingInitialDataRef.current) {
+      loadingInitialDataRef.current = true;
       try {
+        setFetching(true);
         const initialData = await fetchOptions("", 0);
         setOptions(initialData);
       } catch (error) {
         console.error("Lỗi khi tải dữ liệu ban đầu:", error);
       } finally {
         setFetching(false);
+        loadingInitialDataRef.current = false;
       }
     }
-  }, [fetchOptions, options.length, fetching]);
+  }, [fetchOptions, options.length]);
 
-  const handleVisibleChange = useCallback(
-    (visible: boolean) => {
-      // Lưu trạng thái open
-      if (onDropdownVisibleChange) {
-        onDropdownVisibleChange(visible);
-      } else {
-        setInternalOpen(visible);
-      }
-
-      if (visible) {
-        // Khi mở dropdown, tải dữ liệu ban đầu nếu cần
-        loadInitialOptions();
-      } else {
-        // Reset search state khi dropdown đóng
-        clearSearchState();
-      }
-    },
-    [onDropdownVisibleChange, loadInitialOptions, clearSearchState]
-  );
-
-  // Cập nhật options khi initialOptions thay đổi và không đang tìm kiếm
-  useEffect(() => {
-    if (!searching && initialOptions.length > 0) {
-      setOptions(initialOptions);
-    }
-  }, [initialOptions, searching]);
-
-  // Tải thêm options khi cuộn
-  const loadMoreOptions = useCallback(async () => {
-    if (fetching) return;
-
-    setFetching(true);
-    try {
-      const nextPage = currentPage + 1;
-      const searchTerm = searchInputRef.current;
-
-      const moreOptions = await fetchOptions(searchTerm, nextPage);
-
-      setOptions((prev) => {
-        // Lọc ra các options không trùng lặp
-        const newOptions = moreOptions.filter(
-          (newOpt) =>
-            !prev.some((existingOpt) => existingOpt.value === newOpt.value)
-        );
-        return [...prev, ...newOptions];
-      });
-      setCurrentPage(nextPage);
-    } catch (error) {
-      console.error("Lỗi khi tải thêm options:", error);
-    } finally {
-      setFetching(false);
-    }
-  }, [fetchOptions, currentPage, fetching]);
-
-  // Xử lý debounce search để tránh gọi API liên tục
-  const debounceFetcher = useMemo(() => {
-    const loadOptions = async (value: string) => {
-      // Lưu searchText vào biến state và ref
-      setSearchText(value);
-      searchInputRef.current = value;
-
-      if (!value.trim()) {
-        // Nếu search rỗng, không cần tìm kiếm
-        setSearching(false);
-        if (initialOptions.length > 0) {
-          setOptions(initialOptions);
-        }
-        return;
-      }
-
-      setSearching(true);
-      setCurrentPage(0);
-      setFetching(true);
-
-      const fetchId = ++fetchRef.current;
-
-      try {
-        const newOptions = await fetchOptions(value, 0);
-        if (fetchId !== fetchRef.current) return;
-
-        setOptions(newOptions);
-      } catch (error) {
-        console.error("Lỗi khi tìm kiếm:", error);
-      } finally {
-        setFetching(false);
-      }
-    };
-
-    return debounce(loadOptions, debounceTimeout);
-  }, [fetchOptions, debounceTimeout, initialOptions]);
-
+  // Xử lý scroll để tải thêm dữ liệu
   const handlePopupScroll = useCallback(
     (e: React.UIEvent<HTMLDivElement>) => {
-      // Xử lý cuộn
       if (onScroll) {
         onScroll(e);
       }
 
       const target = e.target as HTMLDivElement;
       if (
-        target.scrollTop + target.clientHeight >= target.scrollHeight - 20 &&
-        !fetching
+        !fetching &&
+        target.scrollTop + target.clientHeight >= target.scrollHeight - 50
       ) {
-        loadMoreOptions();
+        const nextPage = currentPage + 1;
+        setCurrentPage(nextPage);
+
+        setFetching(true);
+        fetchOptions(searchTextRef.current, nextPage)
+          .then((newOptions) => {
+            setOptions((prev) => {
+              // Lọc ra các options không trùng lặp
+              const newUniqueOptions = newOptions.filter(
+                (newOpt) =>
+                  !prev.some(
+                    (existingOpt) => existingOpt.value === newOpt.value
+                  )
+              );
+              return [...prev, ...newUniqueOptions];
+            });
+          })
+          .catch((error) => {
+            console.error("Lỗi khi tải thêm options:", error);
+          })
+          .finally(() => {
+            setFetching(false);
+          });
       }
     },
-    [onScroll, fetching, loadMoreOptions]
+    [fetchOptions, currentPage, fetching, onScroll]
   );
 
-  const handleClear = useCallback(() => {
-    setSearchText("");
-    searchInputRef.current = "";
-    // Tải lại danh sách mặc định
-    if (initialOptions.length > 0) {
-      setOptions(initialOptions);
-    } else {
-      loadInitialOptions();
-    }
-  }, [initialOptions, loadInitialOptions]);
+  // Xử lý debounce search
+  const debounceFetcher = useMemo(() => {
+    const loadOptions = (value: string) => {
+      // Lưu giá trị tìm kiếm
+      searchTextRef.current = value;
+
+      // Tăng fetchRef để theo dõi request mới nhất
+      fetchRef.current += 1;
+      const fetchId = fetchRef.current;
+
+      // Reset page về 0 cho tìm kiếm mới
+      setCurrentPage(0);
+
+      // Xử lý tìm kiếm rỗng
+      if (!value.trim()) {
+        if (initialOptions.length > 0) {
+          setOptions(initialOptions);
+          return;
+        } else {
+          loadInitialData();
+          return;
+        }
+      }
+
+      // Bắt đầu tìm kiếm
+      setFetching(true);
+
+      fetchOptions(value, 0)
+        .then((newOptions) => {
+          // Kiểm tra nếu đây là request gần nhất
+          if (fetchId !== fetchRef.current) {
+            return;
+          }
+          setOptions(newOptions);
+        })
+        .catch((error) => {
+          console.error("Lỗi khi tìm kiếm:", error);
+        })
+        .finally(() => {
+          if (fetchId === fetchRef.current) {
+            setFetching(false);
+          }
+        });
+    };
+
+    return debounce(loadOptions, debounceTimeout);
+  }, [fetchOptions, debounceTimeout, initialOptions, loadInitialData]);
+
+  // Xử lý khi dropdown mở
+  const handleDropdownVisibleChange = useCallback(
+    (open: boolean) => {
+      if (open && options.length === 0) {
+        loadInitialData();
+      }
+    },
+    [loadInitialData, options.length]
+  );
 
   return (
     <Select
-      showSearch
       allowClear
+      showSearch
+      labelInValue
       filterOption={false}
       onSearch={debounceFetcher}
       onPopupScroll={handlePopupScroll}
-      open={isOpen}
-      onDropdownVisibleChange={handleVisibleChange}
-      searchValue={searchText}
-      onClear={handleClear}
+      onDropdownVisibleChange={handleDropdownVisibleChange}
       notFoundContent={fetching ? <Spin size="small" /> : null}
       {...props}
       options={options}

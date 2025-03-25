@@ -3,8 +3,7 @@
 import { useState, useCallback, useRef } from "react";
 import { School, SchoolOption } from "@/types/schema";
 import { useSchool } from "./useSchool";
-import { useDispatch } from "react-redux";
-import { searchSchoolsRequest } from "@/redux/slices/schoolSlice";
+import { schoolService } from "@/services/schoolService";
 
 export const useSchoolData = () => {
   const [skip, setSkip] = useState(0);
@@ -16,8 +15,7 @@ export const useSchoolData = () => {
   const lastFetchTimeRef = useRef<number>(0);
   const take = 50; // Số lượng cố định mỗi lần lấy
 
-  const { fetchSchoolList, searchSchools, fetchSchoolOptions } = useSchool();
-  const dispatch = useDispatch();
+  const { fetchSchoolList, fetchSchoolOptions } = useSchool();
 
   // Chức năng giúp tránh gọi API quá nhiều lần
   const shouldProcessRequest = useCallback(() => {
@@ -52,14 +50,7 @@ export const useSchoolData = () => {
       try {
         if (searchTerm || lastSearchTerm) {
           // Khi có từ khóa tìm kiếm, gọi API search với skip
-          dispatch(
-            searchSchoolsRequest({
-              doetCode: selectedSo,
-              divisionCode: selectedPhong,
-              keyword: searchTerm || lastSearchTerm,
-              skip: newSkip,
-            })
-          );
+          fetchSchoolList(selectedSo, selectedPhong, newSkip);
         } else {
           // Khi không có từ khóa, gọi API lấy danh sách với skip
           fetchSchoolList(selectedSo, selectedPhong, newSkip);
@@ -71,151 +62,114 @@ export const useSchoolData = () => {
         }, 500);
       }
     },
-    [
-      fetchSchoolList,
-      skip,
-      take,
-      lastSearchTerm,
-      dispatch,
-      shouldProcessRequest,
-    ]
+    [fetchSchoolList, skip, take, lastSearchTerm, shouldProcessRequest]
   );
 
-  // Xử lý tìm kiếm
+  // Xử lý tìm kiếm đơn giản hóa theo mẫu của Ant Design
   const handleSchoolOptionsSearch = useCallback(
     async (
       searchValue: string,
-      page: number,
+      page: number = 0,
       selectedSo: string | null,
       selectedPhong: string | null
     ): Promise<SchoolOption[]> => {
+      // Kiểm tra dữ liệu đầu vào
       if (!selectedSo) return [];
 
-      // Nếu đang xử lý, tránh gọi API trùng lặp
-      if (searchInProgress.current) {
+      // Tránh gọi API quá nhanh
+      if (!shouldProcessRequest()) {
         return schoolOptions;
       }
 
-      // Trường hợp 1: Tìm kiếm mới
-      if (searchValue.trim() && searchValue !== lastSearchTerm) {
-        if (!shouldProcessRequest()) return schoolOptions;
-
-        setLastSearchTerm(searchValue.trim());
+      try {
+        // Đánh dấu đang tìm kiếm
         searchInProgress.current = true;
 
-        try {
-          // Reset skip khi tìm kiếm mới
-          setSkip(0);
+        // Tính toán skip dựa trên trang
+        const currentSkip = page * take;
+        console.log(
+          `Tìm kiếm trường: page=${page}, skip=${currentSkip}, keyword=${
+            searchValue || ""
+          }`
+        );
 
-          // Gọi API tìm kiếm
-          dispatch(
-            searchSchoolsRequest({
-              doetCode: selectedSo,
-              divisionCode: selectedPhong,
-              keyword: searchValue,
-              skip: 0,
-            })
-          );
-        } finally {
-          setTimeout(() => {
-            searchInProgress.current = false;
-          }, 500);
-        }
-        return schoolOptions;
-      }
-      // Trường hợp 2: Cuộn với tìm kiếm hiện tại
-      else if ((searchValue.trim() || lastSearchTerm) && page > 0) {
-        if (!shouldProcessRequest()) return schoolOptions;
+        // Xử lý tìm kiếm rỗng
+        if (!searchValue.trim()) {
+          // Nếu không có từ khóa, gọi API lấy danh sách
+          await fetchSchoolList(selectedSo, selectedPhong, currentSkip);
 
-        // Tải thêm dữ liệu với từ khóa đang tìm kiếm
-        searchInProgress.current = true;
-        const newSkip = skip + take;
-
-        try {
-          setSkip(newSkip);
-          dispatch(
-            searchSchoolsRequest({
-              doetCode: selectedSo,
-              divisionCode: selectedPhong,
-              keyword: searchValue || lastSearchTerm,
-              skip: newSkip,
-            })
-          );
-        } finally {
-          setTimeout(() => {
-            searchInProgress.current = false;
-          }, 500);
-        }
-        return schoolOptions;
-      }
-      // Trường hợp 3: Phân trang không có tìm kiếm
-      else if (page > 0) {
-        if (!shouldProcessRequest()) return schoolOptions;
-
-        // Tải thêm dữ liệu khi cuộn xuống (không có search term)
-        searchInProgress.current = true;
-        const newSkip = skip + take;
-
-        try {
-          setSkip(newSkip);
-          // Gọi API lấy danh sách với skip
-          fetchSchoolList(selectedSo, selectedPhong, newSkip);
-        } finally {
-          setTimeout(() => {
-            searchInProgress.current = false;
-          }, 500);
-        }
-        return schoolOptions;
-      }
-      // Trường hợp 4: Lần đầu mở dropdown
-      else {
-        // Lần đầu mở dropdown (page = 0, không có search term)
-        if (skip !== 0) {
-          // Reset skip nếu đây là lần đầu mở dropdown nhưng skip không phải là 0
-          setSkip(0);
+          // Chuyển đổi từ School sang SchoolOption
+          return allSchools.map((school) => ({
+            key: school.id.toString(),
+            value: school.id.toString(),
+            label: school.name,
+          }));
         }
 
-        // Reset search term
-        if (lastSearchTerm) {
-          setLastSearchTerm("");
-        }
-
-        // Nếu chưa có dữ liệu, gọi API lấy dữ liệu ban đầu
-        if (
-          schoolOptions.length === 0 &&
-          !searchInProgress.current &&
-          shouldProcessRequest()
-        ) {
-          searchInProgress.current = true;
-          try {
-            fetchSchoolList(selectedSo, selectedPhong, 0);
-          } finally {
-            setTimeout(() => {
-              searchInProgress.current = false;
-            }, 500);
+        // Ghi nhớ từ khóa tìm kiếm
+        if (searchValue !== lastSearchTerm) {
+          setLastSearchTerm(searchValue);
+          // Reset skip khi có từ khóa mới
+          if (page === 0) {
+            setSkip(0);
           }
         }
 
-        // Trả về schoolOptions hiện tại
-        return schoolOptions;
+        // Tìm kiếm với API
+        const result = await schoolService.searchSchools(
+          selectedSo,
+          selectedPhong,
+          searchValue,
+          currentSkip,
+          take
+        );
+
+        // Chuyển đổi kết quả thành options
+        const options: SchoolOption[] = result.data.map((school: School) => ({
+          key: school.id.toString(),
+          value: school.id.toString(),
+          label: school.name,
+        }));
+
+        // Lưu lại options cho lần tìm kiếm tiếp theo
+        if (page === 0) {
+          setSchoolOptions(options);
+        } else {
+          // Lọc trùng lặp khi tải thêm
+          const existingValues = new Set(schoolOptions.map((o) => o.value));
+          const newUniqueOptions = options.filter(
+            (o) => !existingValues.has(o.value)
+          );
+          setSchoolOptions((prev) => [...prev, ...newUniqueOptions]);
+        }
+
+        return options;
+      } catch (error) {
+        console.error("Lỗi khi tìm kiếm trường:", error);
+        return [];
+      } finally {
+        // Đảm bảo đặt lại cờ sau khi hoàn thành
+        setTimeout(() => {
+          searchInProgress.current = false;
+        }, 200);
       }
     },
     [
-      searchSchools,
       fetchSchoolList,
+      allSchools,
       schoolOptions,
-      skip,
       take,
       lastSearchTerm,
-      dispatch,
       shouldProcessRequest,
     ]
   );
 
-  // Xóa bỏ trạng thái tìm kiếm và chuẩn bị tìm kiếm mới
-  const resetSearchState = useCallback(() => {
+  // Xóa bỏ trạng thái tìm kiếm và chuẩn bị tìm kiếm mới chỉ khi yêu cầu rõ ràng
+  const resetSearchState = useCallback((clearSearchTerm = true) => {
     setSkip(0);
-    setLastSearchTerm("");
+    if (clearSearchTerm) {
+      setLastSearchTerm("");
+    }
     setHasMore(true);
     searchInProgress.current = false;
   }, []);
