@@ -4,6 +4,7 @@ export interface AuthState {
   isAuthenticated: boolean;
   token: string | null;
   username: string;
+  password: string;
   selectedSchoolId: string | null;
   isLoading: boolean;
   error: string | null;
@@ -13,6 +14,7 @@ const initialState: AuthState = {
   isAuthenticated: false,
   token: null,
   username: "",
+  password: "",
   selectedSchoolId: null,
   isLoading: false,
   error: null,
@@ -24,7 +26,7 @@ const authSlice = createSlice({
   reducers: {
     loginRequest: (
       state,
-      action: PayloadAction<{
+      _action: PayloadAction<{
         username: string;
         password: string;
         schoolId: number;
@@ -38,6 +40,7 @@ const authSlice = createSlice({
       state.token = action.payload.token;
       state.isLoading = false;
       state.error = null;
+      state.password = "";
     },
     loginFailure: (state, action: PayloadAction<string>) => {
       state.isAuthenticated = false;
@@ -48,14 +51,16 @@ const authSlice = createSlice({
     setUsername: (state, action: PayloadAction<string>) => {
       state.username = action.payload;
     },
-    setSelectedSchoolId: (state, action: PayloadAction<string>) => {
+    setPassword: (state, action: PayloadAction<string>) => {
+      state.password = action.payload;
+    },
+    setSelectedSchoolId: (state, action: PayloadAction<string | null>) => {
       state.selectedSchoolId = action.payload;
     },
     logout: (state) => {
       state.isAuthenticated = false;
       state.token = null;
-      state.username = "";
-      state.selectedSchoolId = null;
+      state.password = "";
     },
   },
 });
@@ -65,6 +70,7 @@ export const {
   loginSuccess,
   loginFailure,
   setUsername,
+  setPassword,
   setSelectedSchoolId,
   logout,
 } = authSlice.actions;

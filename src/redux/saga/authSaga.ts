@@ -1,7 +1,7 @@
 import { call, put, takeLatest } from "redux-saga/effects";
 import { PayloadAction } from "@reduxjs/toolkit";
 import { authService } from "@/services/authService";
-import { loginRequest, loginSuccess, loginFailure } from "../slices/AuthSlice";
+import { loginRequest, loginSuccess, loginFailure } from "../slices/authSlice";
 import { message } from "antd";
 import { toast } from "react-toastify";
 
@@ -29,15 +29,29 @@ function* loginSaga(
 
     yield put(loginSuccess({ token }));
     message.success("Đăng nhập thành công");
-  } catch (error: any) {
-    const errorMessage = error.response?.data?.message || "Đăng nhập thất bại";
+  } catch (error: unknown) {
+    console.error("Lỗi đăng nhập:", error);
+    const errorResponse = error as {
+      response?: {
+        data?: {
+          message?: string;
+        };
+      };
+      message?: string;
+    };
+    const errorMessage =
+      errorResponse.response?.data?.message || "Đăng nhập thất bại";
     toast.error(errorMessage);
     yield put(loginFailure(errorMessage));
   }
 }
 
 function* logoutSaga() {
-  authService.logout();
+  try {
+    yield call([authService, authService.logout]);
+  } catch (error) {
+    console.error("Lỗi đăng xuất:", error);
+  }
 }
 
 export function* watchAuthSagas() {
