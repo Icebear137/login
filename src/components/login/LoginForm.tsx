@@ -1,13 +1,15 @@
-import React from "react";
+"use client";
+
+import React, { useEffect, useState } from "react";
 import { Form, Input, Button, Card, Space } from "antd";
 import { UserOutlined, LockOutlined } from "@ant-design/icons";
 import styles from "./LoginForm.module.css";
 import { UnitSelectors } from "./UnitSelectors";
-import { useAuthStore } from "../../stores/authStore";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { toast, ToastContainer } from "react-toastify";
+import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { useAppDispatch, useAppSelector } from "@/redux/hooks";
+import { setUsername, setPassword, login } from "@/redux/slices/authSlice";
 
 interface LoginFormValues {
   username: string;
@@ -16,27 +18,31 @@ interface LoginFormValues {
 
 export const LoginForm: React.FC = () => {
   const router = useRouter();
-  const { setUsername, setPassword, login } = useAuthStore();
+  const dispatch = useAppDispatch();
+  const { isAuthenticated, isLoading, selectedSchoolId } = useAppSelector(
+    (state) => state.auth
+  );
   const [form] = Form.useForm();
-  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.push("/user");
+    }
+  }, [isAuthenticated, router]);
 
   const handleLogin = async (values: LoginFormValues) => {
-    // if (!isSchoolValid) {
-    //   toast.error("Vui lòng chọn trường!");
-    //   return;
-    // }
+    if (!selectedSchoolId) {
+      toast.warn("Vui lòng chọn đơn vị trước khi đăng nhập");
+      return;
+    }
 
-    setLoading(true);
     try {
-      setUsername(values.username);
-      setPassword(values.password);
-      const success = await login();
-      if (success) {
-        toast.success("Đăng nhập thành công!");
-        router.push("/user");
-      }
-    } finally {
-      setLoading(false);
+      dispatch(setUsername(values.username));
+      dispatch(setPassword(values.password));
+      await dispatch(login()).unwrap();
+    } catch (error) {
+      // Các lỗi khác đã được xử lý trong authSlice
+      console.error("Login error:", error);
     }
   };
 
@@ -58,7 +64,11 @@ export const LoginForm: React.FC = () => {
               name="username"
               rules={[{ required: true, message: "Hãy nhập tên đăng nhập!" }]}
             >
-              <Input prefix={<UserOutlined />} placeholder="Tên đăng nhập" />
+              <Input
+                prefix={<UserOutlined />}
+                placeholder="Tên đăng nhập"
+                disabled={isLoading}
+              />
             </Form.Item>
 
             <Form.Item
@@ -68,22 +78,21 @@ export const LoginForm: React.FC = () => {
               <Input.Password
                 prefix={<LockOutlined />}
                 placeholder="Mật khẩu"
+                disabled={isLoading}
               />
             </Form.Item>
 
             <Form.Item>
-              <Button type="primary" htmlType="submit" block loading={loading}>
+              <Button
+                type="primary"
+                htmlType="submit"
+                block
+                loading={isLoading}
+              >
                 Đăng nhập
               </Button>
             </Form.Item>
           </Form>
-          <ToastContainer
-            position="top-right"
-            autoClose={3000}
-            hideProgressBar={false}
-            closeOnClick
-            pauseOnHover
-          />
         </Card>
       </Space>
     </div>

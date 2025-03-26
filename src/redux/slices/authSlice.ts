@@ -2,7 +2,6 @@
 
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import { authService } from "../../services/authService";
-import { message } from "antd";
 import { toast } from "react-toastify";
 
 interface AuthState {
@@ -40,7 +39,7 @@ export const login = createAsyncThunk(
         password,
         schoolId: parseInt(selectedSchoolId),
       });
-      message.success("Đăng nhập thành công");
+      toast.success("Đăng nhập thành công!");
       return token;
     } catch (error) {
       const errorMessage =
