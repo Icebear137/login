@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { Form, Input, Button, Card, Space } from "antd";
 import { UserOutlined, LockOutlined } from "@ant-design/icons";
 import styles from "./LoginForm.module.css";
@@ -9,7 +9,11 @@ import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
-import { setUsername, setPassword, login } from "@/redux/slices/authSlice";
+import {
+  setUsername,
+  setPassword,
+  loginRequest,
+} from "@/redux/slices/authSlice";
 
 interface LoginFormValues {
   username: string;
@@ -30,20 +34,18 @@ export const LoginForm: React.FC = () => {
     }
   }, [isAuthenticated, router]);
 
-  const handleLogin = async (values: LoginFormValues) => {
+  const handleLogin = (values: LoginFormValues) => {
     if (!selectedSchoolId) {
       toast.warn("Vui lòng chọn đơn vị trước khi đăng nhập");
       return;
     }
 
-    try {
-      dispatch(setUsername(values.username));
-      dispatch(setPassword(values.password));
-      await dispatch(login()).unwrap();
-    } catch (error) {
-      // Các lỗi khác đã được xử lý trong authSlice
-      console.error("Login error:", error);
-    }
+    // Đặt thông tin đăng nhập vào state
+    dispatch(setUsername(values.username));
+    dispatch(setPassword(values.password));
+
+    // Kích hoạt saga
+    dispatch(loginRequest());
   };
 
   return (

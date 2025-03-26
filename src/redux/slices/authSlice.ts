@@ -1,8 +1,13 @@
 "use client";
 
-import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
-import { authService } from "../../services/authService";
+import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { toast } from "react-toastify";
+import {
+  LOGIN_REQUEST,
+  LOGIN_SUCCESS,
+  LOGIN_FAILURE,
+  LOGOUT_SUCCESS,
+} from "../sagas/authSaga";
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -11,6 +16,7 @@ interface AuthState {
   password: string;
   selectedSchoolId: string | null;
   isLoading: boolean;
+  error: string | null;
 }
 
 const initialState: AuthState = {
@@ -20,41 +26,8 @@ const initialState: AuthState = {
   password: "",
   selectedSchoolId: null,
   isLoading: false,
+  error: null,
 };
-
-export const login = createAsyncThunk(
-  "auth/login",
-  async (_, { getState, rejectWithValue }) => {
-    const state = getState() as { auth: AuthState };
-    const { username, password, selectedSchoolId } = state.auth;
-
-    if (!username || !password || !selectedSchoolId) {
-      toast.error("Vui lòng nhập đầy đủ thông tin đăng nhập");
-      return rejectWithValue("Missing credentials");
-    }
-
-    try {
-      const token = await authService.login({
-        userName: username,
-        password,
-        schoolId: parseInt(selectedSchoolId),
-      });
-      toast.success("Đăng nhập thành công!");
-      return token;
-    } catch (error) {
-      const errorMessage =
-        (error as { response?: { data?: { message?: string } } })?.response
-          ?.data?.message || "Đăng nhập thất bại";
-      toast.error(errorMessage);
-      return rejectWithValue(errorMessage);
-    }
-  }
-);
-
-export const logout = createAsyncThunk("auth/logout", async () => {
-  authService.logout();
-  return null;
-});
 
 const authSlice = createSlice({
   name: "auth",
@@ -69,32 +42,42 @@ const authSlice = createSlice({
     setSelectedSchoolId: (state, action: PayloadAction<string>) => {
       state.selectedSchoolId = action.payload;
     },
+    // Reducer cho các action của saga
+    loginRequest: (state) => {
+      state.isLoading = true;
+      state.error = null;
+    },
+    loginSuccess: (state, action: PayloadAction<string>) => {
+      state.isAuthenticated = true;
+      state.token = action.payload;
+      state.password = "";
+      state.isLoading = false;
+      state.error = null;
+    },
+    loginFailure: (state, action: PayloadAction<string>) => {
+      state.isAuthenticated = false;
+      state.token = null;
+      state.isLoading = false;
+      state.error = action.payload;
+    },
+    logoutSuccess: (state) => {
+      state.isAuthenticated = false;
+      state.token = null;
+      state.password = "";
+    },
   },
-  extraReducers: (builder) => {
-    builder
-      .addCase(login.pending, (state) => {
-        state.isLoading = true;
-      })
-      .addCase(login.fulfilled, (state, action) => {
-        state.isAuthenticated = true;
-        state.token = action.payload;
-        state.password = "";
-        state.isLoading = false;
-      })
-      .addCase(login.rejected, (state) => {
-        state.isAuthenticated = false;
-        state.token = null;
-        state.isLoading = false;
-      })
-      .addCase(logout.fulfilled, (state) => {
-        state.isAuthenticated = false;
-        state.token = null;
-        state.password = "";
-      });
-  },
+  // Redux-saga sẽ xử lý các side effect,
+  // nên chúng ta có thể bỏ extraReducers
 });
 
-export const { setUsername, setPassword, setSelectedSchoolId } =
-  authSlice.actions;
+export const {
+  setUsername,
+  setPassword,
+  setSelectedSchoolId,
+  loginRequest,
+  loginSuccess,
+  loginFailure,
+  logoutSuccess,
+} = authSlice.actions;
 
 export default authSlice.reducer;

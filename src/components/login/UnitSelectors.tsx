@@ -87,7 +87,7 @@ export const UnitSelectors = ({
 
   useEffect(() => {
     if (unitLevel) dispatch(setUnitLevel(unitLevel || undefined));
-  }, [dispatch]);
+  }, []);
 
   useEffect(() => {
     if (schoolList.length > 0) {

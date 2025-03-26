@@ -12,8 +12,10 @@ import {
   REGISTER,
 } from "redux-persist";
 import storage from "redux-persist/lib/storage";
+import createSagaMiddleware from "redux-saga";
 import authReducer from "./slices/authSlice";
 import schoolReducer from "./slices/schoolSlice";
+import rootSaga from "./sagas";
 
 // Kiểm tra xem có đang ở môi trường client không để tránh lỗi khi chạy trên server
 const isClient = typeof window !== "undefined";
@@ -34,6 +36,9 @@ const persistedReducer = isClient
   ? persistReducer(persistConfig, rootReducer)
   : rootReducer;
 
+// Tạo saga middleware
+const sagaMiddleware = createSagaMiddleware();
+
 export const store = configureStore({
   reducer: persistedReducer,
   middleware: (getDefaultMiddleware) =>
@@ -41,8 +46,13 @@ export const store = configureStore({
       serializableCheck: {
         ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
       },
-    }),
+    }).concat(sagaMiddleware),
 });
+
+// Chạy saga
+if (isClient) {
+  sagaMiddleware.run(rootSaga);
+}
 
 export const persistor = isClient ? persistStore(store) : null;
 

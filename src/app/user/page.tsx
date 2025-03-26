@@ -5,7 +5,7 @@ import { Button, Card, Spin, message } from "antd";
 import { UserInfo } from "@/types/user";
 import { getUserInfo } from "@/services/userService";
 import { useAppDispatch } from "@/redux/hooks";
-import { logout } from "@/redux/slices/authSlice";
+import { logoutRequest } from "@/redux/sagas/authSaga";
 
 const UserPage: React.FC = () => {
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
@@ -41,7 +41,7 @@ const UserPage: React.FC = () => {
 
   const handleLogout = () => {
     localStorage.removeItem("token");
-    dispatch(logout());
+    dispatch(logoutRequest());
     router.push("/login");
     message.success("Đăng xuất thành công");
   };
