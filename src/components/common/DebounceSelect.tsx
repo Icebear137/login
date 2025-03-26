@@ -64,15 +64,22 @@ export function DebounceSelect<
     const target = e.target as HTMLDivElement;
     if (
       target.scrollTop + target.clientHeight >= target.scrollHeight - 20 &&
-      !fetching &&
-      searchText // Only load more if there's a search query
+      !fetching
     ) {
       setFetching(true);
       const nextPage = currentPage + 1;
       try {
         const moreOptions = await fetchOptions(searchText, nextPage);
         if (moreOptions.length > 0) {
-          setOptions((prev) => [...prev, ...(moreOptions as ValueType[])]);
+          setOptions((prev) => {
+            // Lọc bỏ các options trùng lặp
+            const existingValues = new Set(prev.map((opt) => opt.value));
+            const newUniqueOptions = moreOptions.filter(
+              (opt) => !existingValues.has(opt.value)
+            ) as ValueType[];
+
+            return [...prev, ...newUniqueOptions];
+          });
           setCurrentPage(nextPage);
         }
       } finally {

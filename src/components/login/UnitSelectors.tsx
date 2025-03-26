@@ -1,12 +1,49 @@
+"use client";
+
 import { Select, Space } from "antd";
-import { School } from "../../types/schema";
+import { School, SchoolOption } from "../../types/schema";
 import { UNIT_LEVEL_OPTIONS } from "../../utils/constants";
-import { useSchoolStore } from "../../stores/schoolStore";
-import { useAuthStore } from "../../stores/authStore";
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useState } from "react";
 import { DebounceSelect } from "@/components/common/DebounceSelect";
 import { useSchoolData } from "@/hooks/useSchoolData";
-import { useState } from "react";
+import { useAppDispatch, useAppSelector } from "@/redux/hooks";
+import {
+  setUnitLevel,
+  setSelectedSo,
+  setSelectedPhong,
+  setSelectedSchool,
+  fetchSoList,
+  fetchPhongList,
+  fetchSchoolList,
+  fetchPartnerList,
+} from "@/redux/slices/schoolSlice";
+import { setSelectedSchoolId } from "@/redux/slices/authSlice";
+
+// Định nghĩa lại kiểu trạng thái cho Redux
+interface SchoolState {
+  unitLevel: string | undefined;
+  selectedSo: string | null;
+  selectedPhong: string | null;
+  selectedSchool: School[] | null;
+  soList: School[];
+  phongList: School[];
+  schoolList: School[];
+  isLoading: boolean;
+}
+
+interface AuthState {
+  isAuthenticated: boolean;
+  token: string | null;
+  username: string;
+  password: string;
+  selectedSchoolId: string | null;
+  isLoading: boolean;
+}
+
+interface AppState {
+  school: SchoolState;
+  auth: AuthState;
+}
 
 export const UnitSelectors = ({
   required = true,
@@ -15,26 +52,23 @@ export const UnitSelectors = ({
   required?: boolean;
   onValidationChange?: (isValid: boolean) => void;
 }) => {
+  const dispatch = useAppDispatch();
+
+  // Lấy state từ Redux
   const {
     unitLevel,
-    setUnitLevel,
     selectedSo,
-    setSelectedSo,
     selectedPhong,
-    setSelectedPhong,
     schoolList,
     soList,
     phongList,
-    isLoading,
     selectedSchool,
-    setSelectedSchool,
-  } = useSchoolStore();
+    isLoading: isSchoolLoading,
+  } = useAppSelector((state) => (state as unknown as AppState).school);
 
-  const {
-    selectedSchoolId,
-    setSelectedSchoolId,
-    isLoading: isAuthLoading,
-  } = useAuthStore();
+  const { selectedSchoolId, isLoading: isAuthLoading } = useAppSelector(
+    (state) => (state as unknown as AppState).auth
+  );
 
   const {
     skip,
@@ -49,23 +83,23 @@ export const UnitSelectors = ({
   } = useSchoolData();
 
   const [showError, setShowError] = useState(false);
-  const loading = isLoading || isAuthLoading;
+  const loading = isSchoolLoading || isAuthLoading;
 
   useEffect(() => {
-    if (unitLevel) setUnitLevel(unitLevel || undefined);
-  }, [unitLevel, setUnitLevel]);
+    if (unitLevel) dispatch(setUnitLevel(unitLevel || undefined));
+  }, []);
 
   useEffect(() => {
     if (schoolList.length > 0) {
       setAllSchools((prev) => {
         const newSchools = schoolList.filter(
-          (school) => !prev.some((s) => s.id === school.id)
+          (school: School) => !prev.some((s: School) => s.id === school.id)
         );
         const updatedSchools =
           skip === 0 ? schoolList : [...prev, ...newSchools];
 
         setSchoolOptions(
-          updatedSchools.map((s) => ({
+          updatedSchools.map((s: School) => ({
             key: `list_${s.id}`,
             value: s.id.toString(),
             label: s.name,
@@ -107,70 +141,152 @@ export const UnitSelectors = ({
   // Add new useEffect to handle unit level changes
   useEffect(() => {
     if (unitLevel === "02" && selectedSo) {
-      setSelectedSchoolId(
-        soList.find((s) => s.doetCode === selectedSo)?.id?.toString() || ""
+      dispatch(
+        setSelectedSchoolId(
+          soList
+            .find((s: School) => s.doetCode === selectedSo)
+            ?.id?.toString() || ""
+        )
       );
     } else if (unitLevel === "03" && selectedPhong) {
-      setSelectedSchoolId(
-        phongList
-          .find((s) => s.divisionCode === selectedPhong)
-          ?.id?.toString() || ""
+      dispatch(
+        setSelectedSchoolId(
+          phongList
+            .find((s: School) => s.divisionCode === selectedPhong)
+            ?.id?.toString() || ""
+        )
       );
     } else if (unitLevel === "04") {
-      setSelectedSchoolId(selectedSchool?.[0]?.id?.toString() || "");
+      dispatch(setSelectedSchoolId(selectedSchool?.[0]?.id?.toString() || ""));
     }
-  }, [unitLevel, selectedSo, selectedPhong, soList, phongList]);
+  }, [
+    unitLevel,
+    selectedSo,
+    selectedPhong,
+    soList,
+    phongList,
+    selectedSchool,
+    dispatch,
+  ]);
 
   // Handlers
   const handleSoChange = (value: string) => {
-    setSelectedSo(value);
-    setSelectedSchool([]);
+    dispatch(setSelectedSo(value));
+    dispatch(setSelectedSchool([]));
     setAllSchools([]);
     setSchoolOptions([]);
 
     if (unitLevel === "02") {
-      setSelectedSchoolId(
-        soList.find((s) => s.doetCode === value)?.id?.toString() || ""
+      dispatch(
+        setSelectedSchoolId(
+          soList.find((s: School) => s.doetCode === value)?.id?.toString() || ""
+        )
+      );
+    }
+
+    // Fetch related data
+    if (value) {
+      dispatch(fetchPhongList(value));
+      dispatch(
+        fetchSchoolList({
+          doetCode: value,
+          divisionCode: null,
+          skip: 0,
+          take: 50,
+        })
       );
     }
   };
 
   const handlePhongChange = (value: string) => {
-    setSelectedPhong(value);
-    setSelectedSchool([]);
+    dispatch(setSelectedPhong(value));
+    dispatch(setSelectedSchool([]));
     setAllSchools([]);
+
+    // Fetch school list with phong selected
+    if (selectedSo) {
+      dispatch(
+        fetchSchoolList({
+          doetCode: selectedSo,
+          divisionCode: value,
+          skip: 0,
+          take: 50,
+        })
+      );
+    }
   };
 
-  const handleSchoolChange = (value: any) => {
+  const handleSchoolChange = (value: SchoolOption | undefined) => {
     if (!value) {
-      setSelectedSchoolId("");
-      setSelectedSchool([]);
+      dispatch(setSelectedSchoolId(""));
+      dispatch(setSelectedSchool([]));
       return;
     }
 
-    setSelectedSchoolId(value.value);
-    setSelectedSchool([
-      {
-        id: Number(value.value),
-        name: value.label,
-      } as School,
-    ]);
+    dispatch(setSelectedSchoolId(value.value));
+    dispatch(
+      setSelectedSchool([
+        {
+          id: Number(value.value),
+          name: value.label,
+        } as School,
+      ])
+    );
   };
 
   const handleUnitLevelChange = (value: string) => {
-    setUnitLevel(value);
-    if (value === "02" && selectedSo) {
-      setSelectedSchoolId(
-        soList.find((s) => s.doetCode === selectedSo)?.id?.toString() || ""
-      );
-    } else if (value === "03" && selectedPhong) {
-      setSelectedSchoolId(
-        phongList
-          .find((s) => s.divisionCode === selectedPhong)
-          ?.id?.toString() || ""
-      );
-    } else {
-      setSelectedSchoolId("");
+    dispatch(setUnitLevel(value));
+
+    if (value === "02") {
+      dispatch(fetchSoList());
+      if (selectedSo) {
+        dispatch(
+          setSelectedSchoolId(
+            soList
+              .find((s: School) => s.doetCode === selectedSo)
+              ?.id?.toString() || ""
+          )
+        );
+      } else {
+        dispatch(setSelectedSchoolId(""));
+      }
+    } else if (value === "03") {
+      dispatch(fetchSoList());
+      if (selectedSo && selectedPhong) {
+        dispatch(fetchPhongList(selectedSo));
+        dispatch(
+          setSelectedSchoolId(
+            phongList
+              .find((s: School) => s.divisionCode === selectedPhong)
+              ?.id?.toString() || ""
+          )
+        );
+      } else {
+        dispatch(setSelectedSchoolId(""));
+      }
+    } else if (value === "04") {
+      dispatch(fetchSoList());
+      if (selectedSo) {
+        dispatch(fetchPhongList(selectedSo));
+        dispatch(
+          fetchSchoolList({
+            doetCode: selectedSo,
+            divisionCode: selectedPhong,
+            skip: 0,
+            take: 50,
+          })
+        );
+        if (selectedSchool?.[0]) {
+          dispatch(setSelectedSchoolId(selectedSchool[0].id.toString()));
+        } else {
+          dispatch(setSelectedSchoolId(""));
+        }
+      } else {
+        dispatch(setSelectedSchoolId(""));
+      }
+    } else if (value === "05") {
+      dispatch(fetchPartnerList());
+      dispatch(setSelectedSchoolId(null));
     }
   };
 
@@ -240,7 +356,10 @@ export const UnitSelectors = ({
           showSearch
           placeholder="Sở"
           value={selectedSo}
-          options={soList.map((s) => ({ value: s.doetCode, label: s.name }))}
+          options={soList.map((s: School) => ({
+            value: s.doetCode,
+            label: s.name,
+          }))}
           filterOption={(input, option) =>
             (option?.label as string)
               ?.toLowerCase()
@@ -258,7 +377,7 @@ export const UnitSelectors = ({
           showSearch
           placeholder="Phòng"
           value={selectedPhong}
-          options={phongList.map((s) => ({
+          options={phongList.map((s: School) => ({
             value: s.divisionCode,
             label: s.name,
           }))}
@@ -305,7 +424,7 @@ export const UnitSelectors = ({
           showSearch
           placeholder="Đơn vị đối tác"
           value={selectedSchoolId}
-          options={schoolList.map((s) => ({
+          options={schoolList.map((s: School) => ({
             value: s.id.toString(),
             label: s.name,
           }))}
@@ -314,7 +433,7 @@ export const UnitSelectors = ({
               ?.toLowerCase()
               .includes(input.toLowerCase())
           }
-          onChange={setSelectedSchoolId}
+          onChange={(value) => dispatch(setSelectedSchoolId(value))}
           disabled={loading}
         />
       )}
