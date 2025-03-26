@@ -4,12 +4,14 @@ import { useRouter } from "next/navigation";
 import { Button, Card, Spin, message } from "antd";
 import { UserInfo } from "@/types/user";
 import { getUserInfo } from "@/services/userService";
-import { useAuthStore } from "@/stores/authStore";
+import { useAppDispatch } from "@/redux/hooks";
+import { logoutRequest } from "@/redux/sagas/authSaga";
 
 const UserPage: React.FC = () => {
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+  const dispatch = useAppDispatch();
 
   useEffect(() => {
     const fetchUserInfo = async () => {
@@ -25,6 +27,7 @@ const UserPage: React.FC = () => {
         const data = await getUserInfo(token);
         setUserInfo(data);
       } catch (error) {
+        console.error("Lỗi khi lấy thông tin người dùng:", error);
         message.error("Không thể lấy thông tin người dùng");
         localStorage.removeItem("token");
         router.push("/login");
@@ -37,11 +40,8 @@ const UserPage: React.FC = () => {
   }, [router]);
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    useAuthStore.setState({ isAuthenticated: false });
-    useAuthStore.setState({ token: null });
+    dispatch(logoutRequest());
     router.push("/login");
-    message.success("Đăng xuất thành công");
   };
 
   if (isLoading) {

@@ -1,13 +1,17 @@
+"use client";
+
 import { useState } from "react";
 import { schoolService } from "@/services/schoolService";
-import { useSchoolStore } from "@/stores/schoolStore";
 import { School, SchoolOption } from "../types/schema";
+import { useAppDispatch } from "@/redux/hooks";
+import { appendSchoolList } from "@/redux/slices/schoolSlice";
 
 export const useSchoolData = () => {
   const [skip, setSkip] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [allSchools, setAllSchools] = useState<School[]>([]);
   const [schoolOptions, setSchoolOptions] = useState<SchoolOption[]>([]);
+  const dispatch = useAppDispatch();
 
   const loadMoreSchools = async (
     newSkip: number,
@@ -23,7 +27,8 @@ export const useSchoolData = () => {
         newSkip,
         50
       );
-      useSchoolStore.setState({ schoolList: response.data || [] });
+
+      dispatch(appendSchoolList(response.data || []));
       setSkip(newSkip);
     } catch (error) {
       console.error("Failed to load more schools:", error);
