@@ -49,8 +49,10 @@ function* logoutSaga(): Generator<any, void, any> {
   try {
     yield call(authService.logout);
     yield put(logoutSuccess());
+    toast.success("Đăng xuất thành công!");
   } catch (error) {
     console.error("Logout error:", error);
+    toast.error("Đăng xuất không thành công");
   }
 }
 

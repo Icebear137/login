@@ -40,10 +40,8 @@ const UserPage: React.FC = () => {
   }, [router]);
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
     dispatch(logoutRequest());
     router.push("/login");
-    message.success("Đăng xuất thành công");
   };
 
   if (isLoading) {

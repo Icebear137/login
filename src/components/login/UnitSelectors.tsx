@@ -286,7 +286,7 @@ export const UnitSelectors = ({
       }
     } else if (value === "05") {
       dispatch(fetchPartnerList());
-      dispatch(setSelectedSchoolId(""));
+      dispatch(setSelectedSchoolId(null));
     }
   };
 
