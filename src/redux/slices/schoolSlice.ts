@@ -16,6 +16,10 @@ interface SchoolState {
   phongList: School[];
   schoolList: School[];
   isLoading: boolean;
+  searchKey: string;
+  currentPage: number;
+  hasMore: boolean;
+  isSearchMode: boolean;
 }
 
 const initialState: SchoolState = {
@@ -27,6 +31,10 @@ const initialState: SchoolState = {
   phongList: [],
   schoolList: [],
   isLoading: false,
+  searchKey: "",
+  currentPage: 0,
+  hasMore: true,
+  isSearchMode: false,
 };
 
 // Async thunks
@@ -128,20 +136,43 @@ export const searchSchools = createAsyncThunk(
       doetCode,
       divisionCode,
       keyword,
+      skip = 0,
+      take = 50,
     }: {
       doetCode: string | null;
       divisionCode: string | null;
       keyword: string;
+      skip?: number;
+      take?: number;
     },
-    { rejectWithValue }
+    { getState, rejectWithValue }
   ) => {
     try {
+      // Lấy searchKey hiện tại từ state nếu đang trong chế độ search và không phải là request đầu tiên
+      const state = getState() as RootState;
+      const currentSearchKey = state.school.searchKey;
+      const isInSearchMode = state.school.isSearchMode;
+
+      // Nếu đang trong chế độ search và keyword rỗng (có thể do infinite scroll),
+      // sử dụng currentSearchKey từ state
+      const effectiveKeyword =
+        isInSearchMode && !keyword && skip > 0 ? currentSearchKey : keyword;
+
       const response = await schoolService.searchSchools(
         doetCode,
         divisionCode,
-        keyword
+        effectiveKeyword,
+        skip,
+        take
       );
-      return response.data || [];
+
+      // Nếu là trang đầu tiên, trả về dữ liệu mới
+      // Nếu không phải trang đầu tiên, giữ lại dữ liệu cũ và thêm dữ liệu mới vào
+      if (skip === 0) {
+        return response.data || [];
+      } else {
+        return [...state.school.schoolList, ...(response.data || [])];
+      }
     } catch (error) {
       console.error("Error searching schools:", error);
       return rejectWithValue([]);
@@ -215,24 +246,58 @@ const schoolSlice = createSlice({
     setUnitLevel: (state, action: PayloadAction<string | undefined>) => {
       state.unitLevel = action.payload;
       state.schoolList = [];
+      state.currentPage = 0;
+      state.hasMore = true;
+      state.searchKey = "";
+      state.isSearchMode = false;
     },
     setSelectedSo: (state, action: PayloadAction<string | null>) => {
       state.selectedSo = action.payload;
       state.selectedPhong = null;
       state.schoolList = [];
+      state.currentPage = 0;
+      state.hasMore = true;
+      state.searchKey = "";
+      state.isSearchMode = false;
     },
     setSelectedPhong: (state, action: PayloadAction<string | null>) => {
       state.selectedPhong = action.payload;
       state.schoolList = [];
+      state.currentPage = 0;
+      state.hasMore = true;
+      state.searchKey = "";
+      state.isSearchMode = false;
     },
     setSelectedSchool: (state, action: PayloadAction<School[]>) => {
       state.selectedSchool = action.payload;
     },
     appendSchoolList: (state, action: PayloadAction<School[]>) => {
       state.schoolList = [...state.schoolList, ...action.payload];
+      state.currentPage += 1;
+      state.hasMore = action.payload.length > 0;
     },
     resetSchoolList: (state) => {
       state.schoolList = [];
+      state.currentPage = 0;
+      state.hasMore = true;
+      state.searchKey = "";
+      state.isSearchMode = false;
+    },
+    setSearchKey: (state, action: PayloadAction<string>) => {
+      state.searchKey = action.payload;
+    },
+    setIsSearchMode: (state, action: PayloadAction<boolean>) => {
+      state.isSearchMode = action.payload;
+      // Chỉ xóa searchKey khi chuyển từ search mode sang không search
+      if (!action.payload) {
+        state.searchKey = "";
+      }
+    },
+    incrementPage: (state) => {
+      state.currentPage += 1;
+    },
+    setHasMore: (state, action: PayloadAction<boolean>) => {
+      state.hasMore = action.payload;
     },
   },
   extraReducers: (builder) => {
@@ -265,11 +330,21 @@ const schoolSlice = createSlice({
         state.isLoading = true;
       })
       .addCase(fetchSchoolList.fulfilled, (state, action) => {
-        state.schoolList = action.payload;
+        // Nếu là trang đầu tiên, thay thế hoàn toàn dữ liệu
+        // Nếu không phải trang đầu tiên, thêm vào dữ liệu cũ
+        if (state.currentPage === 0) {
+          state.schoolList = action.payload;
+        } else {
+          state.schoolList = [...state.schoolList, ...action.payload];
+        }
+        state.hasMore = action.payload.length > 0;
         state.isLoading = false;
       })
       .addCase(fetchSchoolList.rejected, (state) => {
         state.isLoading = false;
+        if (state.currentPage === 0) {
+          state.hasMore = false;
+        }
       })
 
       .addCase(fetchPartnerList.pending, (state) => {
@@ -290,9 +365,11 @@ const schoolSlice = createSlice({
       .addCase(searchSchools.fulfilled, (state, action) => {
         state.schoolList = action.payload;
         state.isLoading = false;
+        state.hasMore = action.payload.length > 0;
+        // Không thay đổi isSearchMode ở đây vì nó đã được set bởi action setIsSearchMode
       })
       .addCase(searchSchools.rejected, (state) => {
-        state.schoolList = [];
+        // Giữ nguyên schoolList nếu search thất bại
         state.isLoading = false;
       });
   },
@@ -305,6 +382,10 @@ export const {
   setSelectedSchool,
   appendSchoolList,
   resetSchoolList,
+  setSearchKey,
+  setIsSearchMode,
+  incrementPage,
+  setHasMore,
 } = schoolSlice.actions;
 
 export default schoolSlice.reducer;
