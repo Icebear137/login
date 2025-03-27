@@ -10,10 +10,17 @@ import { logoutRequest } from "@/redux/sagas/authSaga";
 const UserPage: React.FC = () => {
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isMounted, setIsMounted] = useState(false);
   const router = useRouter();
   const dispatch = useAppDispatch();
 
   useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isMounted) return;
+
     const fetchUserInfo = async () => {
       const token = localStorage.getItem("token");
 
@@ -37,12 +44,17 @@ const UserPage: React.FC = () => {
     };
 
     fetchUserInfo();
-  }, [router]);
+  }, [router, isMounted]);
 
   const handleLogout = () => {
     dispatch(logoutRequest());
     router.push("/login");
   };
+
+  // Tránh render ở phía server để ngăn hydration mismatch
+  if (!isMounted) {
+    return null;
+  }
 
   if (isLoading) {
     return (

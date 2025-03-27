@@ -52,6 +52,7 @@ export const UnitSelectors = ({
   required?: boolean;
   onValidationChange?: (isValid: boolean) => void;
 }) => {
+  const [isMounted, setIsMounted] = useState(false);
   const dispatch = useAppDispatch();
 
   // Lấy state từ Redux
@@ -86,8 +87,14 @@ export const UnitSelectors = ({
   const loading = isSchoolLoading || isAuthLoading;
 
   useEffect(() => {
-    if (unitLevel) dispatch(setUnitLevel(unitLevel || undefined));
+    setIsMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!isMounted) return;
+
+    if (unitLevel) dispatch(setUnitLevel(unitLevel));
+  }, [unitLevel, isMounted, dispatch]);
 
   useEffect(() => {
     if (schoolList.length > 0) {
@@ -337,6 +344,11 @@ export const UnitSelectors = ({
         ]
       : uniqueOptions;
   }, [schoolOptions, selectedSchool]);
+
+  // Tránh render ở phía server để ngăn hydration mismatch
+  if (!isMounted) {
+    return null;
+  }
 
   return (
     <Space direction="vertical" className="w-full">
