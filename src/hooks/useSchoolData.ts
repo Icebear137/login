@@ -97,7 +97,8 @@ export const useSchoolData = () => {
           );
         }
       } else {
-        // Reset trạng thái nếu không có giá trị tìm kiếm
+        // Reset trạng thái khi không có giá trị tìm kiếm (hoặc khi xóa bằng backspace)
+        dispatch(setSearchKey(""));
         dispatch(setIsSearchMode(false));
 
         // Lấy danh sách trường thông thường
@@ -118,7 +119,7 @@ export const useSchoolData = () => {
       const response = await schoolService.searchSchools(
         selectedSo,
         selectedPhong,
-        searchValue,
+        searchValue || "",
         skip,
         50
       );

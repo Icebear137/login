@@ -12,6 +12,7 @@ export interface DebounceSelectProps<ValueType = any>
   debounceTimeout?: number;
   initialOptions?: { value: string; label: string }[];
   onScroll?: (e: React.UIEvent<HTMLDivElement>) => void;
+  onSearchEmpty?: () => Promise<void>; // Add this new prop
 }
 
 export function DebounceSelect<
@@ -21,6 +22,7 @@ export function DebounceSelect<
   debounceTimeout = 500,
   initialOptions = [],
   onScroll,
+  onSearchEmpty, // Add this new prop
   ...props
 }: DebounceSelectProps<ValueType>) {
   const [fetching, setFetching] = useState(false);
@@ -103,18 +105,24 @@ export function DebounceSelect<
     }
   };
 
+  const handleSearch = async (value: string) => {
+    setSearchText(value);
+    if (value) {
+      debounceFetcher(value);
+    } else {
+      // When search text is empty
+      if (onSearchEmpty) {
+        await onSearchEmpty();
+      }
+      clearSearchState();
+    }
+  };
+
   return (
     <Select<ValueType>
       labelInValue
       filterOption={false}
-      onSearch={(value) => {
-        setSearchText(value);
-        if (value) {
-          debounceFetcher(value);
-        } else {
-          clearSearchState();
-        }
-      }}
+      onSearch={handleSearch}
       onClear={clearSearchState}
       notFoundContent={fetching ? <Spin size="small" /> : null}
       options={options}

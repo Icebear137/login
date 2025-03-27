@@ -18,6 +18,7 @@ import {
   fetchPartnerList,
 } from "@/redux/slices/schoolSlice";
 import { setSelectedSchoolId } from "@/redux/slices/authSlice";
+import { set } from "lodash";
 
 // Định nghĩa lại kiểu trạng thái cho Redux
 interface SchoolState {
@@ -231,6 +232,26 @@ export const UnitSelectors = ({
     if (!value) {
       dispatch(setSelectedSchoolId(""));
       dispatch(setSelectedSchool([]));
+      console.log(selectedPhong, selectedSo);
+      if (selectedPhong) {
+        dispatch(
+          fetchSchoolList({
+            doetCode: selectedSo,
+            divisionCode: selectedPhong,
+            skip: 0,
+            take: 50,
+          })
+        );
+      } else {
+        dispatch(
+          fetchSchoolList({
+            doetCode: selectedSo,
+            divisionCode: null,
+            skip: 0,
+            take: 50,
+          })
+        );
+      }
       return;
     }
 
@@ -322,6 +343,19 @@ export const UnitSelectors = ({
       selectedSo,
       selectedPhong
     );
+  };
+
+  const handleSearchEmpty = async () => {
+    if (selectedSo) {
+      dispatch(
+        fetchSchoolList({
+          doetCode: selectedSo,
+          divisionCode: selectedPhong || null,
+          skip: 0,
+          take: 50,
+        })
+      );
+    }
   };
 
   const getInitialOptions = useCallback(() => {
@@ -429,6 +463,7 @@ export const UnitSelectors = ({
             onScroll={handlePopupScroll}
             initialOptions={getInitialOptions()}
             listHeight={256}
+            onSearchEmpty={handleSearchEmpty}
           />
         </>
       )}
