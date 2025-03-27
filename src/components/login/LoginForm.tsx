@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Form, Input, Button, Card, Space } from "antd";
 import { UserOutlined, LockOutlined } from "@ant-design/icons";
 import styles from "./LoginForm.module.css";
@@ -21,6 +21,7 @@ interface LoginFormValues {
 }
 
 export const LoginForm: React.FC = () => {
+  const [isMounted, setIsMounted] = useState(false);
   const router = useRouter();
   const dispatch = useAppDispatch();
   const { isAuthenticated, isLoading, selectedSchoolId } = useAppSelector(
@@ -29,10 +30,16 @@ export const LoginForm: React.FC = () => {
   const [form] = Form.useForm();
 
   useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isMounted) return;
+
     if (isAuthenticated) {
       router.push("/user");
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, router, isMounted]);
 
   const handleLogin = (values: LoginFormValues) => {
     if (!selectedSchoolId) {
@@ -47,6 +54,11 @@ export const LoginForm: React.FC = () => {
     // Kích hoạt saga
     dispatch(loginRequest());
   };
+
+  // Tránh render ở phía server để ngăn hydration mismatch
+  if (!isMounted) {
+    return null;
+  }
 
   return (
     <div className="w-2/3">
