@@ -41,7 +41,7 @@ function* fetchPhongListSaga(action: AnyAction): Generator {
 }
 
 interface FetchSchoolListPayload {
-  doetCode: string | null;
+  doetCode: string;
   divisionCode: string | null;
   skip?: number;
   take?: number;
@@ -157,7 +157,7 @@ function* fetchPartnerListSaga(action: AnyAction): Generator {
 }
 
 interface SearchSchoolsPayload {
-  doetCode: string | null;
+  doetCode: string;
   divisionCode: string | null;
   keyword: string;
   skip?: number;

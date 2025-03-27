@@ -26,11 +26,13 @@ export const schoolService = {
   },
 
   fetchPhongList: async (doetCode: string): Promise<SchoolResponse> => {
-    const response = await schoolService.fetchSchools({
-      doetCode,
-      groupUnitCode: "03",
-    });
-    return response;
+    if (doetCode) {
+      const response = await schoolService.fetchSchools({
+        doetCode,
+        groupUnitCode: "03",
+      });
+      return response;
+    }
   },
 
   fetchSchoolList: async (
@@ -54,7 +56,7 @@ export const schoolService = {
   },
 
   searchSchools: async (
-    doetCode: string | null,
+    doetCode: string,
     divisionCode: string | null,
     searchKey: string | "",
     skip = 0,

@@ -191,9 +191,13 @@ export const UnitSelectors = ({
       );
     }
 
-    // Fetch related data
-    if (value) {
+    // Fetch related data only if value exists and unit level requires it
+    if (value && (unitLevel === "03" || unitLevel === "04")) {
       dispatch(fetchPhongList(value));
+    }
+
+    // Fetch school list only for unit level 04
+    if (value && unitLevel === "04") {
       dispatch(
         fetchSchoolList({
           doetCode: value,
