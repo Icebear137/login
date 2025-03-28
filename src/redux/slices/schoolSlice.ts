@@ -1,9 +1,7 @@
 "use client";
 
-import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
+import { createSlice, createAction, PayloadAction } from "@reduxjs/toolkit";
 import { School } from "../../types/schema";
-import { schoolService } from "../../services/schoolService";
-import { RootState } from "../store";
 import { debounce } from "lodash";
 import { AppDispatch } from "../store";
 
@@ -37,147 +35,90 @@ const initialState: SchoolState = {
   isSearchMode: false,
 };
 
-// Async thunks
-export const fetchSoList = createAsyncThunk(
-  "school/fetchSoList",
-  async (_, { rejectWithValue }) => {
-    try {
-      const response = await schoolService.fetchSoList();
-      return response.data || [];
-    } catch (error) {
-      console.error("Error fetching So list:", error);
-      return rejectWithValue([]);
-    }
-  }
+// Action Types
+export const FETCH_SO_LIST_REQUEST = "school/fetchSoListRequest";
+export const FETCH_SO_LIST_SUCCESS = "school/fetchSoListSuccess";
+export const FETCH_SO_LIST_FAILURE = "school/fetchSoListFailure";
+
+export const FETCH_PHONG_LIST_REQUEST = "school/fetchPhongListRequest";
+export const FETCH_PHONG_LIST_SUCCESS = "school/fetchPhongListSuccess";
+export const FETCH_PHONG_LIST_FAILURE = "school/fetchPhongListFailure";
+
+export const FETCH_SCHOOL_LIST_REQUEST = "school/fetchSchoolListRequest";
+export const FETCH_SCHOOL_LIST_SUCCESS = "school/fetchSchoolListSuccess";
+export const FETCH_SCHOOL_LIST_FAILURE = "school/fetchSchoolListFailure";
+
+export const FETCH_PARTNER_LIST_REQUEST = "school/fetchPartnerListRequest";
+export const FETCH_PARTNER_LIST_SUCCESS = "school/fetchPartnerListSuccess";
+export const FETCH_PARTNER_LIST_FAILURE = "school/fetchPartnerListFailure";
+
+export const SEARCH_SCHOOLS_REQUEST = "school/searchSchoolsRequest";
+export const SEARCH_SCHOOLS_SUCCESS = "school/searchSchoolsSuccess";
+export const SEARCH_SCHOOLS_FAILURE = "school/searchSchoolsFailure";
+
+export const FETCH_SCHOOL_OPTIONS_REQUEST = "school/fetchSchoolOptionsRequest";
+export const FETCH_SCHOOL_OPTIONS_SUCCESS = "school/fetchSchoolOptionsSuccess";
+export const FETCH_SCHOOL_OPTIONS_FAILURE = "school/fetchSchoolOptionsFailure";
+
+// Action Creators
+export const fetchSoListRequest = createAction(FETCH_SO_LIST_REQUEST);
+export const fetchSoListSuccess = createAction<School[]>(FETCH_SO_LIST_SUCCESS);
+export const fetchSoListFailure = createAction<Error>(FETCH_SO_LIST_FAILURE);
+
+export const fetchPhongListRequest = createAction<string | null>(
+  FETCH_PHONG_LIST_REQUEST
+);
+export const fetchPhongListSuccess = createAction<School[]>(
+  FETCH_PHONG_LIST_SUCCESS
+);
+export const fetchPhongListFailure = createAction<Error>(
+  FETCH_PHONG_LIST_FAILURE
 );
 
-export const fetchPhongList = createAsyncThunk(
-  "school/fetchPhongList",
-  async (doetCode: string, { rejectWithValue }) => {
-    try {
-      const response = await schoolService.fetchPhongList(doetCode);
-      return response.data || [];
-    } catch (error) {
-      console.error("Error fetching Phong list:", error);
-      return rejectWithValue([]);
-    }
-  }
+export const fetchSchoolListRequest = createAction<{
+  doetCode: string | null;
+  divisionCode: string | null;
+  skip?: number;
+  take?: number;
+}>(FETCH_SCHOOL_LIST_REQUEST);
+export const fetchSchoolListSuccess = createAction<School[]>(
+  FETCH_SCHOOL_LIST_SUCCESS
+);
+export const fetchSchoolListFailure = createAction<Error>(
+  FETCH_SCHOOL_LIST_FAILURE
 );
 
-export const fetchSchoolList = createAsyncThunk(
-  "school/fetchSchoolList",
-  async (
-    {
-      doetCode,
-      divisionCode,
-      skip = 0,
-      take = 50,
-    }: {
-      doetCode: string | null;
-      divisionCode: string | null;
-      skip?: number;
-      take?: number;
-    },
-    { getState, rejectWithValue }
-  ) => {
-    if (!doetCode) return rejectWithValue([]);
-
-    try {
-      const response = await schoolService.fetchSchoolList(
-        doetCode,
-        divisionCode,
-        skip,
-        take
-      );
-
-      const state = getState() as RootState;
-      const selectedSchools = state.school.selectedSchool || [];
-      const responseData = response.data || [];
-
-      // Filter out schools that are already in response.data
-      const uniqueSelectedSchools = selectedSchools.filter(
-        (selected: School) =>
-          !responseData.some((school) => school.id === selected.id)
-      );
-
-      if (skip === 0) {
-        return [...uniqueSelectedSchools, ...responseData];
-      } else {
-        return [...responseData];
-      }
-    } catch (error) {
-      console.error("Error fetching school list:", error);
-      if (skip === 0) {
-        const state = getState() as RootState;
-        return state.school.selectedSchool || [];
-      }
-      return rejectWithValue([]);
-    }
-  }
+export const fetchPartnerListRequest = createAction(FETCH_PARTNER_LIST_REQUEST);
+export const fetchPartnerListSuccess = createAction<School[]>(
+  FETCH_PARTNER_LIST_SUCCESS
+);
+export const fetchPartnerListFailure = createAction<Error>(
+  FETCH_PARTNER_LIST_FAILURE
 );
 
-export const fetchPartnerList = createAsyncThunk(
-  "school/fetchPartnerList",
-  async (_, { rejectWithValue }) => {
-    try {
-      const response = await schoolService.fetchPartnerList();
-      return response.data || [];
-    } catch (error) {
-      console.error("Error fetching partner list:", error);
-      return rejectWithValue([]);
-    }
-  }
+export const searchSchoolsRequest = createAction<{
+  doetCode: string | null;
+  divisionCode: string | null;
+  keyword: string;
+  skip?: number;
+  take?: number;
+}>(SEARCH_SCHOOLS_REQUEST);
+export const searchSchoolsSuccess = createAction<School[]>(
+  SEARCH_SCHOOLS_SUCCESS
 );
+export const searchSchoolsFailure = createAction<Error>(SEARCH_SCHOOLS_FAILURE);
 
-export const searchSchools = createAsyncThunk(
-  "school/searchSchools",
-  async (
-    {
-      doetCode,
-      divisionCode,
-      keyword,
-      skip = 0,
-      take = 50,
-    }: {
-      doetCode: string | null;
-      divisionCode: string | null;
-      keyword: string;
-      skip?: number;
-      take?: number;
-    },
-    { getState, rejectWithValue }
-  ) => {
-    try {
-      // Lấy searchKey hiện tại từ state nếu đang trong chế độ search và không phải là request đầu tiên
-      const state = getState() as RootState;
-      const currentSearchKey = state.school.searchKey;
-      const isInSearchMode = state.school.isSearchMode;
-
-      // Nếu đang trong chế độ search và keyword rỗng (có thể do infinite scroll),
-      // sử dụng currentSearchKey từ state
-      const effectiveKeyword =
-        isInSearchMode && !keyword && skip > 0 ? currentSearchKey : keyword;
-
-      const response = await schoolService.searchSchools(
-        doetCode,
-        divisionCode,
-        effectiveKeyword,
-        skip,
-        take
-      );
-
-      // Nếu là trang đầu tiên, trả về dữ liệu mới
-      // Nếu không phải trang đầu tiên, giữ lại dữ liệu cũ và thêm dữ liệu mới vào
-      if (skip === 0) {
-        return response.data || [];
-      } else {
-        return [...state.school.schoolList, ...(response.data || [])];
-      }
-    } catch (error) {
-      console.error("Error searching schools:", error);
-      return rejectWithValue([]);
-    }
-  }
+export const fetchSchoolOptionsRequest = createAction<{
+  selectedSo: string;
+  selectedPhong: string | null;
+  searchValue: string;
+  existingIds: Set<string>;
+}>(FETCH_SCHOOL_OPTIONS_REQUEST);
+export const fetchSchoolOptionsSuccess = createAction<School[]>(
+  FETCH_SCHOOL_OPTIONS_SUCCESS
+);
+export const fetchSchoolOptionsFailure = createAction<Error>(
+  FETCH_SCHOOL_OPTIONS_FAILURE
 );
 
 // create thunk for debouncedSearch
@@ -188,7 +129,7 @@ const debouncedSearchAction = debounce(
     keyword: string,
     dispatch: AppDispatch
   ) => {
-    dispatch(searchSchools({ doetCode, divisionCode, keyword }));
+    dispatch(searchSchoolsRequest({ doetCode, divisionCode, keyword }));
   },
   500
 );
@@ -199,45 +140,6 @@ export const debouncedSearch =
   (dispatch: AppDispatch) => {
     debouncedSearchAction(doetCode, divisionCode, keyword, dispatch);
   };
-
-export const fetchSchoolOptions = createAsyncThunk(
-  "school/fetchSchoolOptions",
-  async (
-    {
-      selectedSo,
-      selectedPhong,
-      searchValue,
-      existingIds,
-    }: {
-      selectedSo: string;
-      selectedPhong: string | null;
-      searchValue: string;
-      existingIds: Set<string>;
-    },
-    { rejectWithValue }
-  ) => {
-    if (!selectedSo) return rejectWithValue([]);
-
-    try {
-      const response = await schoolService.searchSchools(
-        selectedSo,
-        selectedPhong,
-        searchValue
-      );
-
-      return (response.data || [])
-        .filter((school) => !existingIds.has(school.id.toString()))
-        .map((school) => ({
-          key: `search_${school.id}`,
-          value: school.id.toString(),
-          label: school.name,
-        }));
-    } catch (error) {
-      console.error("Error fetching school options:", error);
-      return rejectWithValue([]);
-    }
-  }
-);
 
 const schoolSlice = createSlice({
   name: "school",
@@ -302,75 +204,84 @@ const schoolSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      .addCase(fetchSoList.pending, (state) => {
+      // Fetch So List
+      .addCase(fetchSoListRequest, (state) => {
         state.isLoading = true;
       })
-      .addCase(fetchSoList.fulfilled, (state, action) => {
+      .addCase(fetchSoListSuccess, (state, action) => {
+        state.isLoading = false;
         state.soList = action.payload;
-        state.isLoading = false;
       })
-      .addCase(fetchSoList.rejected, (state) => {
+      .addCase(fetchSoListFailure, (state) => {
+        state.isLoading = false;
         state.soList = [];
-        state.isLoading = false;
       })
-
-      .addCase(fetchPhongList.pending, (state) => {
+      // Fetch Phong List
+      .addCase(fetchPhongListRequest, (state) => {
         state.isLoading = true;
       })
-      .addCase(fetchPhongList.fulfilled, (state, action) => {
+      .addCase(fetchPhongListSuccess, (state, action) => {
+        state.isLoading = false;
         state.phongList = action.payload;
-        state.isLoading = false;
       })
-      .addCase(fetchPhongList.rejected, (state) => {
+      .addCase(fetchPhongListFailure, (state) => {
+        state.isLoading = false;
         state.phongList = [];
-        state.isLoading = false;
       })
-
-      .addCase(fetchSchoolList.pending, (state) => {
+      // Fetch School List
+      .addCase(fetchSchoolListRequest, (state) => {
         state.isLoading = true;
       })
-      .addCase(fetchSchoolList.fulfilled, (state, action) => {
-        // Nếu là trang đầu tiên, thay thế hoàn toàn dữ liệu
-        // Nếu không phải trang đầu tiên, thêm vào dữ liệu cũ
+      .addCase(fetchSchoolListSuccess, (state, action) => {
+        state.isLoading = false;
+        state.schoolList = action.payload;
+      })
+      .addCase(fetchSchoolListFailure, (state) => {
+        state.isLoading = false;
+        state.schoolList = [];
+      })
+      // Fetch Partner List
+      .addCase(fetchPartnerListRequest, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(fetchPartnerListSuccess, (state, action) => {
+        state.isLoading = false;
+        state.schoolList = action.payload;
+      })
+      .addCase(fetchPartnerListFailure, (state) => {
+        state.isLoading = false;
+        state.schoolList = [];
+      })
+      // Search Schools
+      .addCase(searchSchoolsRequest, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(searchSchoolsSuccess, (state, action) => {
+        state.isLoading = false;
         if (state.currentPage === 0) {
           state.schoolList = action.payload;
         } else {
           state.schoolList = [...state.schoolList, ...action.payload];
         }
-        state.hasMore = action.payload.length > 0;
+        state.currentPage += 1;
+        state.hasMore = action.payload.length === 50;
+      })
+      .addCase(searchSchoolsFailure, (state) => {
         state.isLoading = false;
-      })
-      .addCase(fetchSchoolList.rejected, (state) => {
-        state.isLoading = false;
-        if (state.currentPage === 0) {
-          state.hasMore = false;
-        }
-      })
-
-      .addCase(fetchPartnerList.pending, (state) => {
-        state.isLoading = true;
-      })
-      .addCase(fetchPartnerList.fulfilled, (state, action) => {
-        state.schoolList = action.payload;
-        state.isLoading = false;
-      })
-      .addCase(fetchPartnerList.rejected, (state) => {
         state.schoolList = [];
-        state.isLoading = false;
+        state.hasMore = false;
       })
-
-      .addCase(searchSchools.pending, (state) => {
+      // Fetch School Options
+      .addCase(fetchSchoolOptionsRequest, (state) => {
         state.isLoading = true;
       })
-      .addCase(searchSchools.fulfilled, (state, action) => {
+      .addCase(fetchSchoolOptionsSuccess, (state, action) => {
+        state.isLoading = false;
         state.schoolList = action.payload;
-        state.isLoading = false;
-        state.hasMore = action.payload.length > 0;
-        // Không thay đổi isSearchMode ở đây vì nó đã được set bởi action setIsSearchMode
       })
-      .addCase(searchSchools.rejected, (state) => {
-        // Giữ nguyên schoolList nếu search thất bại
+      .addCase(fetchSchoolOptionsFailure, (state) => {
         state.isLoading = false;
+        state.schoolList = [];
       });
   },
 });
