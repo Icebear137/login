@@ -12,10 +12,10 @@ import {
   setSelectedSo,
   setSelectedPhong,
   setSelectedSchool,
-  fetchSoList,
-  fetchPhongList,
-  fetchSchoolList,
-  fetchPartnerList,
+  fetchSoListRequest,
+  fetchPhongListRequest,
+  fetchSchoolListRequest,
+  fetchPartnerListRequest,
 } from "@/redux/slices/schoolSlice";
 import { setSelectedSchoolId } from "@/redux/slices/authSlice";
 import { set } from "lodash";
@@ -194,13 +194,13 @@ export const UnitSelectors = ({
 
     // Fetch related data only if value exists and unit level requires it
     if (value && (unitLevel === "03" || unitLevel === "04")) {
-      dispatch(fetchPhongList(value));
+      dispatch(fetchPhongListRequest(value));
     }
 
     // Fetch school list only for unit level 04
     if (value && unitLevel === "04") {
       dispatch(
-        fetchSchoolList({
+        fetchSchoolListRequest({
           doetCode: value,
           divisionCode: null,
           skip: 0,
@@ -218,7 +218,7 @@ export const UnitSelectors = ({
     // Fetch school list with phong selected
     if (selectedSo) {
       dispatch(
-        fetchSchoolList({
+        fetchSchoolListRequest({
           doetCode: selectedSo,
           divisionCode: value,
           skip: 0,
@@ -233,18 +233,18 @@ export const UnitSelectors = ({
       dispatch(setSelectedSchoolId(""));
       dispatch(setSelectedSchool([]));
       console.log(selectedPhong, selectedSo);
-      if (selectedPhong) {
+      if (selectedPhong && selectedSo) {
         dispatch(
-          fetchSchoolList({
+          fetchSchoolListRequest({
             doetCode: selectedSo,
             divisionCode: selectedPhong,
             skip: 0,
             take: 50,
           })
         );
-      } else {
+      } else if (selectedSo) {
         dispatch(
-          fetchSchoolList({
+          fetchSchoolListRequest({
             doetCode: selectedSo,
             divisionCode: null,
             skip: 0,
@@ -268,9 +268,15 @@ export const UnitSelectors = ({
 
   const handleUnitLevelChange = (value: string) => {
     dispatch(setUnitLevel(value));
+    // dispatch(setSelectedSo(null));
+    // dispatch(setSelectedPhong(null));
+    dispatch(setSelectedSchool([]));
+    dispatch(setSelectedSchoolId(""));
+    setAllSchools([]);
+    setSchoolOptions([]);
 
     if (value === "02") {
-      dispatch(fetchSoList());
+      dispatch(fetchSoListRequest());
       if (selectedSo) {
         dispatch(
           setSelectedSchoolId(
@@ -279,13 +285,11 @@ export const UnitSelectors = ({
               ?.id?.toString() || ""
           )
         );
-      } else {
-        dispatch(setSelectedSchoolId(""));
       }
     } else if (value === "03") {
-      dispatch(fetchSoList());
+      dispatch(fetchSoListRequest());
       if (selectedSo && selectedPhong) {
-        dispatch(fetchPhongList(selectedSo));
+        dispatch(fetchPhongListRequest(selectedSo));
         dispatch(
           setSelectedSchoolId(
             phongList
@@ -293,31 +297,33 @@ export const UnitSelectors = ({
               ?.id?.toString() || ""
           )
         );
-      } else {
-        dispatch(setSelectedSchoolId(""));
       }
     } else if (value === "04") {
-      dispatch(fetchSoList());
+      dispatch(fetchSoListRequest());
       if (selectedSo) {
-        dispatch(fetchPhongList(selectedSo));
-        dispatch(
-          fetchSchoolList({
-            doetCode: selectedSo,
-            divisionCode: selectedPhong,
-            skip: 0,
-            take: 50,
-          })
-        );
-        if (selectedSchool?.[0]) {
-          dispatch(setSelectedSchoolId(selectedSchool[0].id.toString()));
+        dispatch(fetchPhongListRequest(selectedSo));
+        if (selectedPhong) {
+          dispatch(
+            fetchSchoolListRequest({
+              doetCode: selectedSo,
+              divisionCode: selectedPhong,
+              skip: 0,
+              take: 50,
+            })
+          );
         } else {
-          dispatch(setSelectedSchoolId(""));
+          dispatch(
+            fetchSchoolListRequest({
+              doetCode: selectedSo,
+              divisionCode: null,
+              skip: 0,
+              take: 50,
+            })
+          );
         }
-      } else {
-        dispatch(setSelectedSchoolId(""));
       }
     } else if (value === "05") {
-      dispatch(fetchPartnerList());
+      dispatch(fetchPartnerListRequest());
       dispatch(setSelectedSchoolId(null));
     }
   };
@@ -348,7 +354,7 @@ export const UnitSelectors = ({
   const handleSearchEmpty = async () => {
     if (selectedSo) {
       dispatch(
-        fetchSchoolList({
+        fetchSchoolListRequest({
           doetCode: selectedSo,
           divisionCode: selectedPhong || null,
           skip: 0,

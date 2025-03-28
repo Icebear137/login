@@ -5,8 +5,8 @@ import { schoolService } from "@/services/schoolService";
 import { School, SchoolOption } from "../types/schema";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import {
-  fetchSchoolList,
-  searchSchools,
+  fetchSchoolListRequest,
+  searchSchoolsRequest,
   setSearchKey,
   setIsSearchMode,
 } from "@/redux/slices/schoolSlice";
@@ -26,20 +26,18 @@ export const useSchoolData = () => {
     if (!selectedSo || isLoading || !hasMore) return;
 
     if (isSearchMode && searchKey) {
-      // Sử dụng search với pagination và luôn truyền searchKey hiện tại
       dispatch(
-        searchSchools({
+        searchSchoolsRequest({
           doetCode: selectedSo,
           divisionCode: selectedPhong,
-          keyword: searchKey, // Sử dụng searchKey từ Redux store
+          keyword: searchKey,
           skip: newSkip,
           take: 50,
         })
       );
     } else {
-      // Sử dụng fetchSchoolList thông thường
       dispatch(
-        fetchSchoolList({
+        fetchSchoolListRequest({
           doetCode: selectedSo,
           divisionCode: selectedPhong,
           skip: newSkip,
@@ -80,54 +78,39 @@ export const useSchoolData = () => {
 
     try {
       if (searchValue && searchValue.trim().length > 0) {
-        // Lưu trạng thái search
         dispatch(setSearchKey(searchValue));
         dispatch(setIsSearchMode(true));
 
-        // Thực hiện tìm kiếm
-        if (page === 0) {
-          dispatch(
-            searchSchools({
-              doetCode: selectedSo,
-              divisionCode: selectedPhong,
-              keyword: searchValue,
-              skip: 0,
-              take: 50,
-            })
-          );
-        }
+        const skip = page * 50;
+        const response = await schoolService.searchSchools(
+          selectedSo,
+          selectedPhong,
+          searchValue,
+          skip,
+          50
+        );
+
+        return response.data.map((school: School) => ({
+          value: school.id.toString(),
+          label: school.name,
+        }));
       } else {
-        // Reset trạng thái khi không có giá trị tìm kiếm (hoặc khi xóa bằng backspace)
         dispatch(setSearchKey(""));
         dispatch(setIsSearchMode(false));
 
-        // Lấy danh sách trường thông thường
-        if (page === 0) {
-          dispatch(
-            fetchSchoolList({
-              doetCode: selectedSo,
-              divisionCode: selectedPhong,
-              skip: 0,
-              take: 50,
-            })
-          );
-        }
+        const skip = page * 50;
+        const response = await schoolService.fetchSchoolList(
+          selectedSo,
+          selectedPhong,
+          skip,
+          50
+        );
+
+        return response.data.map((school: School) => ({
+          value: school.id.toString(),
+          label: school.name,
+        }));
       }
-
-      // Trả về kết quả từ API trực tiếp cho component select
-      const skip = page * 50;
-      const response = await schoolService.searchSchools(
-        selectedSo,
-        selectedPhong,
-        searchValue || "",
-        skip,
-        50
-      );
-
-      return response.data.map((school) => ({
-        value: school.id.toString(),
-        label: school.name,
-      }));
     } catch (error) {
       console.error("Error in handleSchoolOptionsSearch:", error);
       return [];
