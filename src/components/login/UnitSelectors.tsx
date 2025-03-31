@@ -268,8 +268,6 @@ export const UnitSelectors = ({
 
   const handleUnitLevelChange = (value: string) => {
     dispatch(setUnitLevel(value));
-    // dispatch(setSelectedSo(null));
-    // dispatch(setSelectedPhong(null));
     dispatch(setSelectedSchool([]));
     dispatch(setSelectedSchoolId(""));
     setAllSchools([]);

@@ -121,26 +121,6 @@ export const fetchSchoolOptionsFailure = createAction<Error>(
   FETCH_SCHOOL_OPTIONS_FAILURE
 );
 
-// create thunk for debouncedSearch
-const debouncedSearchAction = debounce(
-  (
-    doetCode: string,
-    divisionCode: string | null,
-    keyword: string,
-    dispatch: AppDispatch
-  ) => {
-    dispatch(searchSchoolsRequest({ doetCode, divisionCode, keyword }));
-  },
-  500
-);
-
-// create action to trigger debouncedSearch
-export const debouncedSearch =
-  (doetCode: string, divisionCode: string | null, keyword: string) =>
-  (dispatch: AppDispatch) => {
-    debouncedSearchAction(doetCode, divisionCode, keyword, dispatch);
-  };
-
 const schoolSlice = createSlice({
   name: "school",
   initialState,
