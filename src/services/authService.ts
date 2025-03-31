@@ -4,7 +4,6 @@ import { LoginParams } from "../types/schema";
 export const authService = {
   login: async (params: LoginParams) => {
     const response = await apiClient.post("/user/login-school", params);
-    console.log(response);
     const token = response.data?.data?.access_token;
 
     if (!token) {
