@@ -26,6 +26,13 @@ apiClient.interceptors.response.use(
   (response) => {
     // Kiểm tra status code
     const status = response.status;
+    const responseData = response.data;
+
+    // Kiểm tra code từ response data
+    if (responseData?.code && responseData.code !== "1") {
+      console.error(responseData.message || "Đã xảy ra lỗi");
+      return Promise.reject(response);
+    }
 
     // Xử lý các trường hợp status code khác nhau
     switch (status) {
@@ -68,7 +75,14 @@ apiClient.interceptors.response.use(
 
     // Xử lý các lỗi từ API
     const status = error.response.status;
-    const errorMessage = error.response?.data?.message || "Đã xảy ra lỗi";
+    const errorData = error.response.data;
+    const errorMessage = errorData?.message || "Đã xảy ra lỗi";
+
+    // Kiểm tra code từ error data
+    if (errorData?.code && errorData.code !== "1") {
+      console.error(errorMessage);
+      return Promise.reject(error);
+    }
 
     switch (status) {
       case 400:
