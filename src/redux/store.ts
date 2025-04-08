@@ -15,6 +15,7 @@ import storage from "redux-persist/lib/storage";
 import createSagaMiddleware from "redux-saga";
 import authReducer from "./slices/authSlice";
 import schoolReducer from "./slices/schoolSlice";
+import borrowReducer from "./slices/borrowSlice";
 import rootSaga from "./sagas";
 
 // Kiểm tra xem có đang ở môi trường client không để tránh lỗi khi chạy trên server
@@ -29,6 +30,7 @@ const persistConfig = {
 const rootReducer = combineReducers({
   auth: authReducer,
   school: schoolReducer,
+  borrow: borrowReducer,
 });
 
 // Chỉ sử dụng persist khi ở môi trường client

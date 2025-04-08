@@ -67,3 +67,15 @@ export interface SchoolOption {
   value: string;
   label: string;
 }
+
+export interface BorrowRecord {
+  skip: number;
+  take: number;
+  cardType: string;
+  search: string;
+  fromDate: string;
+  toDate: string;
+  loanStatus: string;
+  sortBy: string;
+  sortDirection: string;
+}
