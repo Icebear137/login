@@ -232,7 +232,6 @@ export const UnitSelectors = ({
     if (!value) {
       dispatch(setSelectedSchoolId(""));
       dispatch(setSelectedSchool([]));
-      console.log(selectedPhong, selectedSo);
       if (selectedPhong && selectedSo) {
         dispatch(
           fetchSchoolListRequest({
