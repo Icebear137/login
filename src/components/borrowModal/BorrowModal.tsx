@@ -79,8 +79,8 @@ const BorrowModal: React.FC<BorrowModalProps> = ({ visible, onCancel }) => {
 
   // Handle book selection
   const handleBookSelect = (books: BookInfo[]) => {
-    const newBooks = books.map((book) => ({
-      key: book.id,
+    const newBooks = books.map((book, index) => ({
+      key: `book-${book.id}-${index}`,
       title: book.title,
       isbn: book.id,
       author: book.author || "",

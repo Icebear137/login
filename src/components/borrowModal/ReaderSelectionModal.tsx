@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Modal, Input, Select, Table, Button, Pagination } from "antd";
+import { Modal, Input, Select, Table, Button } from "antd";
 import { SearchOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 
@@ -277,10 +277,10 @@ const ReaderSelectionModal: React.FC<ReaderSelectionModalProps> = ({
         <Table
           columns={columns}
           dataSource={filteredReaders}
-          rowKey="cardId"
+          rowKey={(record) => `reader-selection-${record.cardId}`}
           pagination={false}
           size="small"
-          rowClassName={(record, index) =>
+          rowClassName={(_, index) =>
             index % 2 === 0 ? "bg-white" : "bg-gray-50"
           }
           className="border-collapse"

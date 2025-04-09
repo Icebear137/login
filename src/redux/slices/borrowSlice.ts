@@ -1,40 +1,5 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-
-interface BorrowRecord {
-  id: number;
-  borrowId: string;
-  cardNumber: string;
-  name: string;
-  class: string;
-  type: string;
-  borrowDate: string;
-  returnDate: string;
-  booksCount: number;
-  returned: number;
-  renewed: number;
-}
-
-interface BorrowState {
-  records: BorrowRecord[];
-  loading: boolean;
-  error: string | null;
-  pagination: {
-    current: number;
-    pageSize: number;
-    total: number;
-  };
-  filters: {
-    searchKey: string;
-    fromDate: string;
-    toDate: string;
-    cardType?: number;
-    loanStatus?: number;
-    sortBy?: string;
-    sortDirection?: string;
-    registrationNumber: string;
-    title: string;
-  };
-}
+import { BorrowRecord, BorrowState } from "@/types/schema";
 
 const initialState: BorrowState = {
   records: [],
@@ -51,6 +16,7 @@ const initialState: BorrowState = {
     toDate: "",
     cardType: undefined,
     loanStatus: undefined,
+    isReturn: undefined,
     sortBy: undefined,
     sortDirection: undefined,
     registrationNumber: "",
@@ -68,15 +34,32 @@ const borrowSlice = createSlice({
     ) => {
       state.loading = true;
       state.error = null;
+      if (action.payload.page) {
+        console.log("Updating pagination.current to:", action.payload.page);
+        state.pagination.current = action.payload.page;
+      }
+      if (action.payload.pageSize) {
+        console.log(
+          "Updating pagination.pageSize to:",
+          action.payload.pageSize
+        );
+        state.pagination.pageSize = action.payload.pageSize;
+      }
+      console.log("Updated pagination state:", state.pagination);
     },
     fetchBorrowRecordsSuccess: (
       state,
       action: PayloadAction<{ items: BorrowRecord[]; total: number }>
     ) => {
+      console.log("Loan success action payload:", action.payload);
       state.loading = false;
       state.records = action.payload.items;
       state.pagination.total = action.payload.total;
       state.error = null;
+      console.log("Loan state after update:", {
+        records: state.records,
+        pagination: state.pagination,
+      });
     },
     fetchBorrowRecordsFailure: (state, action: PayloadAction<string>) => {
       state.loading = false;
@@ -88,15 +71,35 @@ const borrowSlice = createSlice({
     ) => {
       state.loading = true;
       state.error = null;
+      if (action.payload.page) {
+        console.log(
+          "Updating book pagination.current to:",
+          action.payload.page
+        );
+        state.pagination.current = action.payload.page;
+      }
+      if (action.payload.pageSize) {
+        console.log(
+          "Updating book pagination.pageSize to:",
+          action.payload.pageSize
+        );
+        state.pagination.pageSize = action.payload.pageSize;
+      }
+      console.log("Updated book pagination state:", state.pagination);
     },
     fetchBookBorrowRecordsSuccess: (
       state,
       action: PayloadAction<{ items: BorrowRecord[]; total: number }>
     ) => {
+      console.log("Book success action payload:", action.payload);
       state.loading = false;
       state.records = action.payload.items;
       state.pagination.total = action.payload.total;
       state.error = null;
+      console.log("Book state after update:", {
+        records: state.records,
+        pagination: state.pagination,
+      });
     },
     fetchBookBorrowRecordsFailure: (state, action: PayloadAction<string>) => {
       state.loading = false;

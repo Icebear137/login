@@ -18,6 +18,7 @@ interface BookInfo {
   publishYear: string;
   available: number;
   total: number;
+  author?: string;
   selected?: boolean;
 }
 
@@ -271,10 +272,10 @@ const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
         <Table
           columns={columns}
           dataSource={filteredBooks}
-          rowKey="id"
+          rowKey={(record) => `book-selection-${record.id}`}
           pagination={false}
           size="small"
-          rowClassName={(record, index) =>
+          rowClassName={(_, index) =>
             index % 2 === 0 ? "bg-white" : "bg-gray-50"
           }
           className="border-collapse"

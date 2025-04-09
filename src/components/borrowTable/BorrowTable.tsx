@@ -18,20 +18,12 @@ import {
   updateFilters,
 } from "@/redux/slices/borrowSlice";
 import { RootState } from "@/redux/store";
-
-interface BorrowRecord {
-  id: number;
-  borrowId: string;
-  cardNumber: string;
-  name: string;
-  class: string;
-  type: string;
-  borrowDate: string;
-  returnDate: string;
-  booksCount: number;
-  returned: number;
-  renewed: number;
-}
+import {
+  BorrowRecord,
+  BookRecord,
+  ApiRecord,
+  ApiBookRecord,
+} from "@/types/schema";
 
 const BorrowTable = () => {
   const dispatch = useDispatch();
@@ -45,20 +37,118 @@ const BorrowTable = () => {
   const [fromDate, setFromDate] = useState<Dayjs | null>(null);
   const [toDate, setToDate] = useState<Dayjs | null>(null);
 
-  useEffect(() => {
-    dispatch(fetchBorrowRecords({}));
-  }, [dispatch]);
+  console.log("Records in state:", records);
+  console.log("View mode:", viewMode);
+  console.log("Pagination state:", pagination);
+  console.log("Loading state:", loading);
 
-  const handleTableChange = (newPagination: TablePaginationConfig) => {
-    dispatch(
-      fetchBorrowRecords({
-        page: newPagination.current,
-        pageSize: newPagination.pageSize,
-      })
-    );
+  // Log whenever pagination changes
+  useEffect(() => {
+    console.log("Pagination state updated:", pagination);
+  }, [pagination]);
+
+  // Function to transform API data to loan table format
+  const transformApiData = (apiRecords: ApiRecord[]): BorrowRecord[] => {
+    console.log("transformApiData input:", apiRecords);
+    if (!apiRecords || !Array.isArray(apiRecords) || apiRecords.length === 0) {
+      return [];
+    }
+
+    return apiRecords.map((record) => {
+      console.log("Processing record:", record);
+      return {
+        id: record.id || 0,
+        borrowId: record.loanCode || "N/A",
+        cardNumber: record.cardNumber || "N/A",
+        name: record.fullName || "N/A",
+        class:
+          record.schoolClassName || record.teacherGroupSubjectName || "N/A",
+        type: record.cardTypeName || "N/A",
+        borrowDate: formatDate(record.loanDate),
+        returnDate: formatDate(record.expiredDate),
+        booksCount: record.totalLoan || record.books?.length || 0,
+        returned: record.totalReturn || 0,
+        lost: record.totalLost || 0,
+      };
+    });
   };
 
-  const columns: ColumnsType<BorrowRecord & { key: string }> = [
+  // Function to transform API data to book table format for flat structure
+  const transformBookData = (bookRecords: ApiBookRecord[]): BookRecord[] => {
+    console.log("transformBookData input:", bookRecords);
+    if (
+      !bookRecords ||
+      !Array.isArray(bookRecords) ||
+      bookRecords.length === 0
+    ) {
+      return [];
+    }
+
+    return bookRecords.map((book) => {
+      console.log("Processing book record:", book);
+      return {
+        id: book.id || 0,
+        registrationNumber: book.registrationNumber || "N/A",
+        isbn: book.isbn || "N/A",
+        loanCode: book.loanCode || "N/A",
+        title: book.title || "N/A",
+        authors: book.authors || "N/A",
+        publishingCompany: book.schoolPublishingCompanyName || "N/A",
+        publishYear: book.publishYear?.toString() || "N/A",
+        cardNumber: book.cardNumber || "N/A",
+        fullName: book.fullName || "N/A",
+        class: book.schoolClassName || book.teacherGroupSubjectName || "N/A",
+        cardType: book.cardTypeName || "N/A",
+        borrowDate: formatDate(book.loanDate),
+        expiredDate: formatDate(book.loanExpiredDate),
+        status: book.isReturn ? "Đã trả" : "Chưa trả",
+      };
+    });
+  };
+
+  // Helper function to format dates
+  const formatDate = (dateString: string) => {
+    if (!dateString) return "N/A";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "N/A";
+    return date.toLocaleDateString("vi-VN");
+  };
+
+  useEffect(() => {
+    if (viewMode === "loan") {
+      dispatch(fetchBorrowRecords({}));
+    } else {
+      dispatch(fetchBookBorrowRecords({}));
+    }
+  }, [dispatch, viewMode]);
+
+  const handleTableChange = (newPagination: TablePaginationConfig) => {
+    console.log("Table pagination changed:", newPagination);
+    console.log("Current Redux pagination state:", pagination);
+
+    const newPage = newPagination.current || 1;
+    const newPageSize = newPagination.pageSize || 10;
+
+    console.log(`Changing page to ${newPage}, pageSize to ${newPageSize}`);
+
+    if (viewMode === "loan") {
+      dispatch(
+        fetchBorrowRecords({
+          page: newPage,
+          pageSize: newPageSize,
+        })
+      );
+    } else {
+      dispatch(
+        fetchBookBorrowRecords({
+          page: newPage,
+          pageSize: newPageSize,
+        })
+      );
+    }
+  };
+
+  const loanColumns: ColumnsType<BorrowRecord & { key: string }> = [
     {
       title: "STT",
       key: "index",
@@ -119,8 +209,8 @@ const BorrowTable = () => {
     },
     {
       title: "Làm mất",
-      dataIndex: "renewed",
-      key: "renewed",
+      dataIndex: "lost",
+      key: "lost",
     },
   ];
 
@@ -133,6 +223,101 @@ const BorrowTable = () => {
       dispatch(fetchBookBorrowRecords({ page: 1 }));
     }
   };
+
+  // Book view columns
+  const bookColumns: ColumnsType<BookRecord & { key: string }> = [
+    {
+      title: "STT",
+      key: "index",
+      width: 50,
+      render: (_, __, index) =>
+        (pagination.current - 1) * pagination.pageSize + index + 1,
+    },
+    {
+      title: "Xem",
+      key: "view",
+      width: 50,
+      render: () => <FileTextOutlined style={{ cursor: "pointer" }} />,
+    },
+    {
+      title: "Số ĐKCB",
+      dataIndex: "registrationNumber",
+      key: "registrationNumber",
+      width: 120,
+    },
+    {
+      title: "Số phiếu",
+      dataIndex: "isbn",
+      key: "isbn",
+      width: 120,
+    },
+    {
+      title: "Tiêu đề sách",
+      dataIndex: "title",
+      key: "title",
+      width: 200,
+    },
+    {
+      title: "Tác giả",
+      dataIndex: "authors",
+      key: "authors",
+      width: 150,
+    },
+    {
+      title: "Nhà xuất bản",
+      dataIndex: "publishingCompany",
+      key: "publishingCompany",
+      width: 150,
+    },
+    {
+      title: "Năm XB",
+      dataIndex: "publishYear",
+      key: "publishYear",
+      width: 80,
+    },
+    {
+      title: "Mã thẻ",
+      dataIndex: "cardNumber",
+      key: "cardNumber",
+      width: 120,
+    },
+    {
+      title: "Họ và tên",
+      dataIndex: "fullName",
+      key: "fullName",
+      width: 150,
+    },
+    {
+      title: "Lớp/Tổ bộ môn",
+      dataIndex: "class",
+      key: "class",
+      width: 120,
+    },
+    {
+      title: "Đối tượng",
+      dataIndex: "cardType",
+      key: "cardType",
+      width: 100,
+    },
+    {
+      title: "Ngày mượn",
+      dataIndex: "borrowDate",
+      key: "borrowDate",
+      width: 120,
+    },
+    {
+      title: "Ngày hẹn trả",
+      dataIndex: "expiredDate",
+      key: "expiredDate",
+      width: 120,
+    },
+    {
+      title: "Trạng thái",
+      dataIndex: "status",
+      key: "status",
+      width: 100,
+    },
+  ];
 
   const handleFromDateChange: DatePickerProps["onChange"] = (date) => {
     setFromDate(date);
@@ -180,7 +365,7 @@ const BorrowTable = () => {
     }
   };
 
-  const handleCardTypeChange = (value: number) => {
+  const handleCardTypeChange = (value: number | null) => {
     dispatch(updateFilters({ cardType: value }));
     if (viewMode === "loan") {
       dispatch(fetchBorrowRecords({ page: 1 }));
@@ -190,17 +375,16 @@ const BorrowTable = () => {
     }
   };
 
-  const handleStatusChange = (value: number) => {
+  const handleStatusChangeLoan = (value: number | null) => {
     dispatch(updateFilters({ loanStatus: value }));
-    if (viewMode === "loan") {
-      dispatch(fetchBorrowRecords({ page: 1 }));
-    }
-    if (viewMode === "book") {
-      dispatch(fetchBookBorrowRecords({ page: 1 }));
-    }
+    dispatch(fetchBorrowRecords({ page: 1 }));
+  };
+  const handleStatusChangeBook = (value: boolean | null) => {
+    dispatch(updateFilters({ isReturn: value }));
+    dispatch(fetchBookBorrowRecords({ page: 1 }));
   };
 
-  const handleSortChange = (value: string) => {
+  const handleSortChange = (value: string | null) => {
     dispatch(updateFilters({ sortBy: value }));
     if (viewMode === "loan") {
       dispatch(fetchBorrowRecords({ page: 1 }));
@@ -210,7 +394,7 @@ const BorrowTable = () => {
     }
   };
 
-  const handleSortDirectionChange = (value: string) => {
+  const handleSortDirectionChange = (value: boolean | null) => {
     dispatch(updateFilters({ sortDirection: value }));
     if (viewMode === "loan") {
       dispatch(fetchBorrowRecords({ page: 1 }));
@@ -247,12 +431,13 @@ const BorrowTable = () => {
           searchKey: "",
           fromDate: "",
           toDate: "",
-          cardType: undefined,
-          loanStatus: undefined,
-          sortBy: undefined,
-          sortDirection: undefined,
+          cardType: null,
+          loanStatus: null,
+          sortBy: null,
+          sortDirection: null,
         })
       );
+      dispatch(fetchBorrowRecords({ page: 1 }));
     }
     if (mode === "book") {
       dispatch(
@@ -260,19 +445,27 @@ const BorrowTable = () => {
           searchKey: "",
           fromDate: "",
           toDate: "",
-          cardType: undefined,
-          loanStatus: undefined,
-          sortBy: undefined,
-          sortDirection: undefined,
+          cardType: null,
+          loanStatus: null,
+          isReturn: null,
+          sortBy: null,
+          sortDirection: null,
           registrationNumber: "",
           title: "",
         })
       );
       dispatch(fetchBookBorrowRecords({ page: 1 }));
-    } else {
-      dispatch(fetchBorrowRecords({ page: 1 }));
     }
   };
+
+  // Initial data fetch based on view mode
+  useEffect(() => {
+    if (viewMode === "loan") {
+      dispatch(fetchBorrowRecords({ page: 1 }));
+    } else {
+      dispatch(fetchBookBorrowRecords({ page: 1 }));
+    }
+  }, [dispatch, viewMode]);
 
   const deleteFilter = () => {
     // Reset date picker values
@@ -285,10 +478,10 @@ const BorrowTable = () => {
           searchKey: "",
           fromDate: "",
           toDate: "",
-          cardType: undefined,
-          loanStatus: undefined,
-          sortBy: undefined,
-          sortDirection: undefined,
+          cardType: null,
+          loanStatus: null,
+          sortBy: null,
+          sortDirection: null,
         })
       );
       dispatch(fetchBorrowRecords({ page: 1 }));
@@ -299,11 +492,12 @@ const BorrowTable = () => {
           searchKey: "",
           fromDate: "",
           toDate: "",
-          cardType: undefined,
-          loanStatus: undefined,
-          sortBy: undefined,
-          sortDirection: undefined,
-          registrationNumber: undefined,
+          cardType: null,
+          loanStatus: null,
+          isReturn: null,
+          sortBy: null,
+          sortDirection: null,
+          registrationNumber: "",
           title: "",
         })
       );
@@ -386,18 +580,30 @@ const BorrowTable = () => {
                 value={toDate}
               />
             </div>
-
-            <Select
-              className="w-full"
-              placeholder="Trạng thái"
-              value={filters.loanStatus}
-              onChange={handleStatusChange}
-              allowClear
-            >
-              <Select.Option value={1}>Chưa trả</Select.Option>
-              <Select.Option value={2}>Trả một phần</Select.Option>
-              <Select.Option value={3}>Đã trả</Select.Option>
-            </Select>
+            {viewMode === "loan" ? (
+              <Select
+                className="w-full"
+                placeholder="Trạng thái"
+                value={filters.loanStatus}
+                onChange={handleStatusChangeLoan}
+                allowClear
+              >
+                <Select.Option value={0}>Chưa trả</Select.Option>
+                <Select.Option value={1}>Trả một phần</Select.Option>
+                <Select.Option value={2}>Đã trả</Select.Option>
+              </Select>
+            ) : (
+              <Select
+                className="w-full"
+                placeholder="Trạng thái"
+                value={filters.isReturn}
+                onChange={handleStatusChangeBook}
+                allowClear
+              >
+                <Select.Option value={false}>Chưa trả</Select.Option>
+                <Select.Option value={true}>Đã trả</Select.Option>
+              </Select>
+            )}
 
             <Select
               className="w-full"
@@ -419,8 +625,8 @@ const BorrowTable = () => {
               onChange={handleSortDirectionChange}
               allowClear
             >
-              <Select.Option value="false">Tăng dần</Select.Option>
-              <Select.Option value="true">Giảm dần</Select.Option>
+              <Select.Option value={false}>Tăng dần</Select.Option>
+              <Select.Option value={true}>Giảm dần</Select.Option>
             </Select>
 
             {viewMode === "book" && (
@@ -443,22 +649,59 @@ const BorrowTable = () => {
         </div>
       )}
 
-      <Table
-        columns={columns}
-        dataSource={records.map((record) => ({
-          ...record,
-          key: record.id.toString(),
-        }))}
-        pagination={{
-          ...pagination,
-          showSizeChanger: true,
-          showTotal: (total) => `Tổng ${total} bản ghi`,
-        }}
-        onChange={handleTableChange}
-        loading={loading}
-        scroll={{ x: true }}
-        size="middle"
-      />
+      {viewMode === "loan" ? (
+        <Table
+          key={`loan-table-${pagination.current}`}
+          columns={loanColumns}
+          dataSource={
+            Array.isArray(records)
+              ? transformApiData(records as unknown as ApiRecord[]).map(
+                  (record, index) => ({
+                    ...record,
+                    key: `loan-${record.id}-${index}`,
+                  })
+                )
+              : []
+          }
+          pagination={{
+            current: pagination.current,
+            pageSize: pagination.pageSize,
+            total: pagination.total,
+            showSizeChanger: true,
+            showTotal: (total) => `Tổng ${total} bản ghi`,
+          }}
+          onChange={handleTableChange}
+          loading={loading}
+          scroll={{ x: true }}
+          size="middle"
+        />
+      ) : (
+        <Table
+          key={`book-table-${pagination.current}`}
+          columns={bookColumns}
+          dataSource={
+            Array.isArray(records)
+              ? transformBookData(records as unknown as ApiBookRecord[]).map(
+                  (record, index) => ({
+                    ...record,
+                    key: `book-${record.id}-${index}`,
+                  })
+                )
+              : []
+          }
+          pagination={{
+            current: pagination.current,
+            pageSize: pagination.pageSize,
+            total: pagination.total,
+            showSizeChanger: true,
+            showTotal: (total) => `Tổng ${total} bản ghi`,
+          }}
+          onChange={handleTableChange}
+          loading={loading}
+          scroll={{ x: true }}
+          size="middle"
+        />
+      )}
 
       <BorrowModal
         visible={modalVisible}
