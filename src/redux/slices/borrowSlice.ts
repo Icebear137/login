@@ -1,10 +1,11 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { BorrowRecord, BorrowState } from "@/types/schema";
+import { BorrowRecord, BorrowState, LoanDetail } from "@/types/schema";
 
 const initialState: BorrowState = {
   records: [],
   loading: false,
   error: null,
+  selectedLoan: null,
   pagination: {
     current: 1,
     pageSize: 50,
@@ -35,31 +36,20 @@ const borrowSlice = createSlice({
       state.loading = true;
       state.error = null;
       if (action.payload.page) {
-        console.log("Updating pagination.current to:", action.payload.page);
         state.pagination.current = action.payload.page;
       }
       if (action.payload.pageSize) {
-        console.log(
-          "Updating pagination.pageSize to:",
-          action.payload.pageSize
-        );
         state.pagination.pageSize = action.payload.pageSize;
       }
-      console.log("Updated pagination state:", state.pagination);
     },
     fetchBorrowRecordsSuccess: (
       state,
       action: PayloadAction<{ items: BorrowRecord[]; total: number }>
     ) => {
-      console.log("Loan success action payload:", action.payload);
       state.loading = false;
       state.records = action.payload.items;
       state.pagination.total = action.payload.total;
       state.error = null;
-      console.log("Loan state after update:", {
-        records: state.records,
-        pagination: state.pagination,
-      });
     },
     fetchBorrowRecordsFailure: (state, action: PayloadAction<string>) => {
       state.loading = false;
@@ -72,34 +62,20 @@ const borrowSlice = createSlice({
       state.loading = true;
       state.error = null;
       if (action.payload.page) {
-        console.log(
-          "Updating book pagination.current to:",
-          action.payload.page
-        );
         state.pagination.current = action.payload.page;
       }
       if (action.payload.pageSize) {
-        console.log(
-          "Updating book pagination.pageSize to:",
-          action.payload.pageSize
-        );
         state.pagination.pageSize = action.payload.pageSize;
       }
-      console.log("Updated book pagination state:", state.pagination);
     },
     fetchBookBorrowRecordsSuccess: (
       state,
       action: PayloadAction<{ items: BorrowRecord[]; total: number }>
     ) => {
-      console.log("Book success action payload:", action.payload);
       state.loading = false;
       state.records = action.payload.items;
       state.pagination.total = action.payload.total;
       state.error = null;
-      console.log("Book state after update:", {
-        records: state.records,
-        pagination: state.pagination,
-      });
     },
     fetchBookBorrowRecordsFailure: (state, action: PayloadAction<string>) => {
       state.loading = false;
@@ -123,6 +99,37 @@ const borrowSlice = createSlice({
         ...action.payload,
       };
     },
+    fetchLoanDetailById: (state, action: PayloadAction<number>) => {
+      state.loading = true;
+      state.error = null;
+    },
+    fetchLoanDetailByIdSuccess: (state, action: PayloadAction<LoanDetail>) => {
+      state.loading = false;
+      state.selectedLoan = action.payload;
+      state.error = null;
+    },
+    fetchLoanDetailByIdFailure: (state, action: PayloadAction<string>) => {
+      state.loading = false;
+      state.error = action.payload;
+      state.selectedLoan = null;
+    },
+    clearSelectedLoan: (state) => {
+      state.selectedLoan = null;
+    },
+    fetchStudent: (state, action: PayloadAction<number>) => {
+      state.loading = true;
+      state.error = null;
+    },
+    fetchStudentSuccess: (state, action: PayloadAction<LoanDetail>) => {
+      state.loading = false;
+      state.selectedLoan = action.payload;
+      state.error = null;
+    },
+    fetchStudentFailure: (state, action: PayloadAction<string>) => {
+      state.loading = false;
+      state.error = action.payload;
+      state.selectedLoan = null;
+    },
   },
 });
 
@@ -135,6 +142,13 @@ export const {
   fetchBookBorrowRecordsFailure,
   updateFilters,
   updatePagination,
+  fetchLoanDetailById,
+  fetchLoanDetailByIdSuccess,
+  fetchLoanDetailByIdFailure,
+  clearSelectedLoan,
+  fetchStudent,
+  fetchStudentSuccess,
+  fetchStudentFailure,
 } = borrowSlice.actions;
 
 export default borrowSlice.reducer;

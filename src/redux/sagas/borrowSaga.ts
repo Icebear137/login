@@ -7,6 +7,9 @@ import {
   fetchBookBorrowRecords,
   fetchBookBorrowRecordsSuccess,
   fetchBookBorrowRecordsFailure,
+  fetchLoanDetailById,
+  fetchLoanDetailByIdSuccess,
+  fetchLoanDetailByIdFailure,
 } from "../slices/borrowSlice";
 import { RootState } from "../store";
 import { borrowService } from "@/services/borrowService";
@@ -21,22 +24,17 @@ function* fetchBorrowRecordsSaga(
     const pageSize = action.payload.pageSize || pagination.pageSize;
     const skip = (page - 1) * pageSize;
 
-    console.log(
-      `Saga: Fetching page ${page}, pageSize ${pageSize}, skip ${skip}`
-    );
-    console.log(`Saga: Current pagination state:`, pagination);
-
     const params = {
       skip,
       take: pageSize,
       ...(filters.searchKey && { searchKey: filters.searchKey }),
       ...(filters.fromDate && { fromDate: filters.fromDate }),
       ...(filters.toDate && { toDate: filters.toDate }),
-      ...(filters.cardType !== undefined && { cardType: filters.cardType }),
-      ...(filters.loanStatus !== undefined && {
+      ...(filters.cardType && { cardType: filters.cardType }),
+      ...(filters.loanStatus && {
         loanStatus: filters.loanStatus,
       }),
-      ...(filters.sortBy !== undefined && { sortBy: filters.sortBy }),
+      ...(filters.sortBy && { sortBy: filters.sortBy }),
       ...(filters.sortDirection !== undefined && {
         sortDirection: filters.sortDirection,
       }),
@@ -52,10 +50,8 @@ function* fetchBorrowRecordsSaga(
           total: response.totalCount,
         })
       );
-
-      console.log(`Loan records fetched successfully for page ${page}`);
     } catch (apiError) {
-      console.error("API Error:", apiError);
+      // Handle API error
       yield put(
         fetchBorrowRecordsFailure(
           apiError instanceof Error ? apiError.message : "Không thể tải dữ liệu"
@@ -63,7 +59,7 @@ function* fetchBorrowRecordsSaga(
       );
     }
   } catch (error) {
-    console.error("Saga Error:", error);
+    // Handle saga error
     yield put(
       fetchBorrowRecordsFailure(
         error instanceof Error ? error.message : "Không thể tải dữ liệu"
@@ -81,21 +77,16 @@ function* fetchBookBorrowRecordsSaga(
     const pageSize = action.payload.pageSize || pagination.pageSize;
     const skip = (page - 1) * pageSize;
 
-    console.log(
-      `Saga: Fetching book page ${page}, pageSize ${pageSize}, skip ${skip}`
-    );
-    console.log(`Saga: Current book pagination state:`, pagination);
-
     const obj = {
       skip,
       take: pageSize,
       ...(filters.searchKey && { searchKey: filters.searchKey }),
       ...(filters.fromDate && { fromDate: filters.fromDate }),
       ...(filters.toDate && { toDate: filters.toDate }),
-      ...(filters.cardType !== undefined && { cardType: filters.cardType }),
-      ...(filters.isReturn !== undefined && { isReturn: filters.isReturn }),
-      ...(filters.sortBy !== undefined && { sortBy: filters.sortBy }),
-      ...(filters.sortDirection !== undefined && {
+      ...(filters.cardType && { cardType: filters.cardType }),
+      ...(filters.isReturn !== null && { isReturn: filters.isReturn }),
+      ...(filters.sortBy && { sortBy: filters.sortBy }),
+      ...(filters.sortDirection !== null && {
         sortDirection: filters.sortDirection,
       }),
       ...(filters.registrationNumber && {
@@ -114,8 +105,6 @@ function* fetchBookBorrowRecordsSaga(
           total: response.totalCount || 0,
         })
       );
-
-      console.log(`Book records fetched successfully for page ${page}`);
     } catch (apiError) {
       console.error("API Error:", apiError);
       yield put(
@@ -125,7 +114,7 @@ function* fetchBookBorrowRecordsSaga(
       );
     }
   } catch (error) {
-    console.error("Saga Error:", error);
+    // Handle saga error
     yield put(
       fetchBookBorrowRecordsFailure(
         error instanceof Error ? error.message : "Không thể tải dữ liệu"
@@ -134,7 +123,27 @@ function* fetchBookBorrowRecordsSaga(
   }
 }
 
+function* fetchLoanDetailByIdSaga(action: PayloadAction<string>) {
+  try {
+    const loanId = action.payload;
+    // @ts-expect-error API call in saga
+    const response = yield borrowService.getLoanDetailById(loanId);
+
+    yield put(fetchLoanDetailByIdSuccess(response));
+  } catch (error) {
+    // Handle saga error
+    yield put(
+      fetchLoanDetailByIdFailure(
+        error instanceof Error
+          ? error.message
+          : "Không thể tải chi tiết phiếu mượn"
+      )
+    );
+  }
+}
+
 export function* borrowSaga() {
   yield takeLatest(fetchBorrowRecords.type, fetchBorrowRecordsSaga);
   yield takeLatest(fetchBookBorrowRecords.type, fetchBookBorrowRecordsSaga);
+  yield takeLatest(fetchLoanDetailById.type, fetchLoanDetailByIdSaga);
 }

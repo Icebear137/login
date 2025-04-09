@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { Table, Select, Input, DatePicker, Button, Space } from "antd";
 import BorrowModal from "../borrowModal/BorrowModal";
+import LoanDetailModal from "./LoanDetailModal";
 import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
 import {
   FileTextOutlined,
@@ -34,48 +35,34 @@ const BorrowTable = () => {
   const [viewMode, setViewMode] = useState<"loan" | "book">("loan");
   const [filter, setFilter] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
+  const [detailModalVisible, setDetailModalVisible] = useState(false);
+  const [selectedLoanId, setSelectedLoanId] = useState<string | null>(null);
   const [fromDate, setFromDate] = useState<Dayjs | null>(null);
   const [toDate, setToDate] = useState<Dayjs | null>(null);
 
-  console.log("Records in state:", records);
-  console.log("View mode:", viewMode);
-  console.log("Pagination state:", pagination);
-  console.log("Loading state:", loading);
-
-  // Log whenever pagination changes
-  useEffect(() => {
-    console.log("Pagination state updated:", pagination);
-  }, [pagination]);
-
   // Function to transform API data to loan table format
   const transformApiData = (apiRecords: ApiRecord[]): BorrowRecord[] => {
-    console.log("transformApiData input:", apiRecords);
     if (!apiRecords || !Array.isArray(apiRecords) || apiRecords.length === 0) {
       return [];
     }
 
-    return apiRecords.map((record) => {
-      console.log("Processing record:", record);
-      return {
-        id: record.id || 0,
-        borrowId: record.loanCode || "N/A",
-        cardNumber: record.cardNumber || "N/A",
-        name: record.fullName || "N/A",
-        class:
-          record.schoolClassName || record.teacherGroupSubjectName || "N/A",
-        type: record.cardTypeName || "N/A",
-        borrowDate: formatDate(record.loanDate),
-        returnDate: formatDate(record.expiredDate),
-        booksCount: record.totalLoan || record.books?.length || 0,
-        returned: record.totalReturn || 0,
-        lost: record.totalLost || 0,
-      };
-    });
+    return apiRecords.map((record) => ({
+      id: record.id || 0,
+      borrowId: record.loanCode || "N/A",
+      cardNumber: record.cardNumber || "N/A",
+      name: record.fullName || "N/A",
+      class: record.schoolClassName || record.teacherGroupSubjectName || "N/A",
+      type: record.cardTypeName || "N/A",
+      borrowDate: formatDate(record.loanDate),
+      returnDate: formatDate(record.expiredDate),
+      booksCount: record.totalLoan || record.books?.length || 0,
+      returned: record.totalReturn || 0,
+      lost: record.totalLost || 0,
+    }));
   };
 
   // Function to transform API data to book table format for flat structure
   const transformBookData = (bookRecords: ApiBookRecord[]): BookRecord[] => {
-    console.log("transformBookData input:", bookRecords);
     if (
       !bookRecords ||
       !Array.isArray(bookRecords) ||
@@ -84,26 +71,22 @@ const BorrowTable = () => {
       return [];
     }
 
-    return bookRecords.map((book) => {
-      console.log("Processing book record:", book);
-      return {
-        id: book.id || 0,
-        registrationNumber: book.registrationNumber || "N/A",
-        isbn: book.isbn || "N/A",
-        loanCode: book.loanCode || "N/A",
-        title: book.title || "N/A",
-        authors: book.authors || "N/A",
-        publishingCompany: book.schoolPublishingCompanyName || "N/A",
-        publishYear: book.publishYear?.toString() || "N/A",
-        cardNumber: book.cardNumber || "N/A",
-        fullName: book.fullName || "N/A",
-        class: book.schoolClassName || book.teacherGroupSubjectName || "N/A",
-        cardType: book.cardTypeName || "N/A",
-        borrowDate: formatDate(book.loanDate),
-        expiredDate: formatDate(book.loanExpiredDate),
-        status: book.isReturn ? "Đã trả" : "Chưa trả",
-      };
-    });
+    return bookRecords.map((book) => ({
+      id: book.id || 0,
+      registrationNumber: book.registrationNumber || "N/A",
+      loanCode: book.loanCode || "N/A",
+      title: book.title || "N/A",
+      authors: book.authors || "N/A",
+      publishingCompany: book.schoolPublishingCompanyName || "N/A",
+      publishYear: book.publishYear?.toString() || "N/A",
+      cardNumber: book.cardNumber || "N/A",
+      fullName: book.fullName || "N/A",
+      class: book.schoolClassName || book.teacherGroupSubjectName || "N/A",
+      cardType: book.cardTypeName || "N/A",
+      borrowDate: formatDate(book.loanDate),
+      expiredDate: formatDate(book.loanExpiredDate),
+      status: book.isReturn ? "Đã trả" : "Chưa trả",
+    }));
   };
 
   // Helper function to format dates
@@ -123,13 +106,8 @@ const BorrowTable = () => {
   }, [dispatch, viewMode]);
 
   const handleTableChange = (newPagination: TablePaginationConfig) => {
-    console.log("Table pagination changed:", newPagination);
-    console.log("Current Redux pagination state:", pagination);
-
     const newPage = newPagination.current || 1;
     const newPageSize = newPagination.pageSize || 10;
-
-    console.log(`Changing page to ${newPage}, pageSize to ${newPageSize}`);
 
     if (viewMode === "loan") {
       dispatch(
@@ -160,7 +138,15 @@ const BorrowTable = () => {
       title: "Xem",
       key: "view",
       width: 70,
-      render: () => <FileTextOutlined style={{ cursor: "pointer" }} />,
+      render: (_, record) => (
+        <FileTextOutlined
+          style={{ cursor: "pointer" }}
+          onClick={() => {
+            setSelectedLoanId(record.borrowId);
+            setDetailModalVisible(true);
+          }}
+        />
+      ),
     },
     {
       title: "Số phiếu",
@@ -237,7 +223,16 @@ const BorrowTable = () => {
       title: "Xem",
       key: "view",
       width: 50,
-      render: () => <FileTextOutlined style={{ cursor: "pointer" }} />,
+      render: (_, record) => (
+        <FileTextOutlined
+          style={{ cursor: "pointer" }}
+          onClick={() => {
+            // Use the loan ID directly from the book record
+            setSelectedLoanId(record.loanCode);
+            setDetailModalVisible(true);
+          }}
+        />
+      ),
     },
     {
       title: "Số ĐKCB",
@@ -247,15 +242,15 @@ const BorrowTable = () => {
     },
     {
       title: "Số phiếu",
-      dataIndex: "isbn",
-      key: "isbn",
+      dataIndex: "loanCode",
+      key: "loanCode",
       width: 120,
     },
     {
       title: "Tiêu đề sách",
       dataIndex: "title",
       key: "title",
-      width: 200,
+      width: 300,
     },
     {
       title: "Tác giả",
@@ -706,6 +701,12 @@ const BorrowTable = () => {
       <BorrowModal
         visible={modalVisible}
         onCancel={() => setModalVisible(false)}
+      />
+
+      <LoanDetailModal
+        visible={detailModalVisible}
+        loanId={selectedLoanId}
+        onCancel={() => setDetailModalVisible(false)}
       />
     </div>
   );

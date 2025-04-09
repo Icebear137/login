@@ -10,7 +10,12 @@ export const borrowService = {
   },
   getBookRecords: async (obj: BookObject) => {
     const response = await apiClient.post("/book/get-borrowed", obj);
-    console.log(response.data.data);
+    return response.data.data;
+  },
+  getLoanDetailById: async (id: number) => {
+    const response = await apiClient.get(
+      `/loan-record/find-by-code-and-type/1/${id}`
+    );
     return response.data.data;
   },
 };
