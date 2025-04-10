@@ -18,4 +18,10 @@ export const borrowService = {
     );
     return response.data.data;
   },
+  getLoanCode: async () => {
+    const response = await apiClient.get(
+      "/loan-record/genarate-loan-code-by-type/1"
+    );
+    return response.data;
+  },
 };

@@ -125,11 +125,46 @@ export interface BookRecord {
   status: string;
 }
 
+export interface LoanDetail {
+  id: number;
+  loanCode: string;
+  loanDate: string;
+  expiredDate: string;
+  note: string;
+  cardNumber: string;
+  fullName: string;
+  schoolClassName?: string;
+  teacherGroupSubjectName?: string;
+  cardTypeName: string;
+  books: {
+    id: number;
+    registrationNumber: string;
+    title: string;
+    authors: string;
+    isbn: string;
+    publishYear: number;
+    schoolPublishingCompanyName: string;
+    isReturn: boolean;
+    returnDate?: string;
+    isLost: boolean;
+    lostDate?: string;
+  }[];
+}
+
+export interface LoanCodeResponse {
+  code: string;
+  data: string;
+  message: string;
+}
+
 export interface BorrowState {
   // Using any[] because records can be either ApiRecord[] or ApiBookRecord[] depending on the view mode
   records: any[];
   loading: boolean;
   error: string | null;
+  selectedLoan: LoanDetail | null;
+  loanCode: string;
+  loadingLoanCode: boolean;
   pagination: {
     current: number;
     pageSize: number;
@@ -147,6 +182,375 @@ export interface BorrowState {
     registrationNumber: string;
     title: string;
   };
+}
+
+export interface BookRegister {
+  id: number;
+  createdBy: number;
+  updatedBy: number;
+  createdAt: string;
+  updatedAt: string;
+  bookCatalogId: number;
+  bookDocumentEntryId: number;
+  registrationNumber: string;
+  registrationDate: string;
+  registrationEntryDate: string;
+  bookConditionId: number;
+  bookStatusId: number;
+  numberOfBorrow: number;
+  notes: string;
+  managementCode: string;
+  pricingCode: string;
+  textbookRegistrationNumber: string;
+  textbookPrefix: string;
+  maxRegistrationNumber: number;
+  bookTypeId: number;
+  bookTypeCode: string;
+  bookTypeName: string;
+  title: string;
+  thumbsUrl: string;
+  parallelTitle: string;
+  shortTitle: string;
+  authors: string;
+  otherAuthors: string;
+  languageId: number;
+  languageCode: string;
+  languageName: string;
+  schoolPublishingCompanyId: number;
+  schoolPublishingCompanyCode: string;
+  schoolPublishingCompanyName: string;
+  publishYear: number;
+  publishingLocationName: string;
+  editionNumber: number;
+  numberOfPages: number;
+  coverPrice: number;
+  referencePrice: number;
+  bookSize: string;
+  isbn: string;
+  schoolBookCategoryId: number;
+  schoolBookCategoryCode: string;
+  schoolBookCategoryName: string;
+  schoolPublicationTypeId: number;
+  schoolPublicationTypeCode: string;
+  schoolPublicationTypeName: string;
+  authorSymbol: string;
+  titleSymbol: string;
+  collectionSeries: string;
+  annotation: string;
+  schoolCategoryId: number;
+  schoolCategoryCode: string;
+  schoolCategoryName: string;
+  compiler: string;
+  chiefEditor: string;
+  translator: string;
+  proofreader: string;
+  isNew: number;
+  documentNumber: string;
+  financialContractNumber: string;
+  documentDate: string;
+  supplierName: string;
+  bookRegisterId: number;
+  cardNumber: string;
+  cardId: number;
+  cardType: number;
+  fullName: string;
+  dateRegister: string;
+  gender: number;
+  schoolClassName: string;
+  teacherGroupSubjectName: string;
+  dateOfBirth: string;
+}
+
+export interface Student {
+  id: number;
+  createdBy: number;
+  updatedBy: number;
+  createdAt: string;
+  updatedAt: string;
+  cardNumber: string;
+  cardTypeId: number;
+  cardStatus: number;
+  userCode: string;
+  fullName: string;
+  lastName: string;
+  firstName: string;
+  gender: number;
+  avatar: string;
+  issueDate: string;
+  startDate: string;
+  expireDate: string;
+  totalBorrowedBooks: number;
+  totalBorrowingBooks: number;
+  totalReturnBooks: number;
+  schoolClassName: string;
+  teacherGroupSubjectName: string;
+  dateOfBirth: string;
+  address: string;
+  phone: string;
+  schoolYears: string;
+  isUsing: number;
+  bookRegisters?: BookRegister[];
+}
+
+export interface StudentParams {
+  skip: number;
+  take: number;
+  searchKey?: string;
+  cardTypeId?: number;
+  cardStatus?: number;
+  sortBy?: string;
+  sortDirection?: string;
+  cardNumber?: string;
+  gradeCode?: string;
+  schoolClassId?: number;
+  isNotExpired?: number;
+  teacherGroupSubjectId?: number | null;
+}
+
+export interface GradeCode {
+  id: number;
+  code: number;
+  schoolLevel: number;
+  name: string;
+  order: number;
+}
+
+export interface SchoolClass {
+  id: number;
+  createdBy: number;
+  updatedBy: number;
+  createdAt: string;
+  updatedAt: string;
+  code: string;
+  year: number;
+  schoolYear: string;
+  schoolLevel: number;
+  gradeCode: string;
+  name: string;
+  status: number;
+  order: number;
+  totalStudents: number;
+  idMoet: number;
+}
+
+export interface SchoolClassResponse {
+  data: SchoolClass[];
+  totalCount: number;
+}
+
+export interface TeacherGroupSubject {
+  id: number;
+  createdBy: number;
+  updatedBy: number;
+  createdAt: string;
+  updatedAt: string;
+  code: string;
+  name: string;
+  order: number;
+  status: number;
+}
+
+export interface Book {
+  id: number;
+  createdBy: number;
+  updatedBy: number;
+  createdAt: string;
+  updatedAt: string;
+  bookCatalogId: number;
+  bookDocumentEntryId: number;
+  registrationNumber: string;
+  registrationDate: string;
+  registrationEntryDate: string;
+  bookConditionId: number;
+  bookStatusId: number;
+  numberOfBorrow: number;
+  notes: string;
+  managementCode: string;
+  pricingCode: string;
+  textbookRegistrationNumber: string;
+  textbookPrefix: string;
+  maxRegistrationNumber: number;
+  bookTypeId: number;
+  bookTypeCode: string;
+  bookTypeName: string;
+  title: string;
+  thumbsUrl: string;
+  parallelTitle: string;
+  shortTitle: string;
+  authors: string;
+  otherAuthors: string;
+  languageId: number;
+  languageCode: string;
+  languageName: string;
+  schoolPublishingCompanyId: number;
+  schoolPublishingCompanyCode: string;
+  schoolPublishingCompanyName: string;
+  publishYear: number;
+  publishingLocationName: string;
+  editionNumber: number;
+  numberOfPages: number;
+  coverPrice: number;
+  referencePrice: number;
+  bookSize: string;
+  isbn: string;
+  schoolBookCategoryId: number;
+  schoolBookCategoryCode: string;
+  schoolBookCategoryName: string;
+  schoolPublicationTypeId: number;
+  schoolPublicationTypeCode: string;
+  schoolPublicationTypeName: string;
+  authorSymbol: string;
+  titleSymbol: string;
+  collectionSeries: string;
+  annotation: string;
+  schoolCategoryId: number;
+  schoolCategoryCode: string;
+  schoolCategoryName: string;
+  compiler: string;
+  chiefEditor: string;
+  translator: string;
+  proofreader: string;
+  isNew: number;
+  documentNumber: string;
+  financialContractNumber: string;
+  documentDate: string;
+  supplierName: string;
+}
+
+export interface BookCatalog {
+  id: number;
+  createdBy: number;
+  updatedBy: number;
+  createdAt: string;
+  updatedAt: string;
+  code: string;
+  title: string;
+  thumbsUrl: string;
+  parallelTitle: string;
+  shortTitle: string;
+  authors: string;
+  otherAuthors: string;
+  languageId: number;
+  languageCode: string;
+  languageName: string;
+  schoolPublishingCompanyId: number;
+  schoolPublishingCompanyCode: string;
+  schoolPublishingCompanyName: string;
+  publishYear: number;
+  publishingLocationName: string;
+  editionNumber: number;
+  numberOfPages: number;
+  coverPrice: number;
+  referencePrice: number;
+  bookSize: string;
+  isbn: string;
+  bookTypeId: number;
+  bookTypeCode: string;
+  bookTypeName: string;
+  schoolBookCategoryId: number;
+  schoolBookCategoryCode: string;
+  schoolBookCategoryName: string;
+  schoolPublicationTypeId: number;
+  schoolPublicationTypeCode: string;
+  schoolPublicationTypeName: string;
+  authorSymbol: string;
+  titleSymbol: string;
+  notes: string;
+  collectionSeries: string;
+  annotation: string;
+  keywords: string;
+  summary: string;
+  introduction: string;
+  schoolCategoryId: number;
+  schoolCategoryCode: string;
+  schoolCategoryName: string;
+  isCatalog: number;
+  isUniqueRegistration: number;
+  compiler: string;
+  chiefEditor: string;
+  translator: string;
+  additionalInfo: string;
+  proofreader: string;
+  secondaryKeywords: string;
+  geographicKeywords: string;
+  characterKeywords: string;
+  isNew: number;
+  books: Book[];
+  totalBooks: number;
+  totalBooksBorrowed: number;
+  totalBooksAvailable: number;
+  gradeCode: number;
+  gradeName: string;
+  subjectId: number;
+  subjectCode: string;
+  subjectName: string;
+  maxTextbookRegistrationNumber: number;
+}
+
+export interface BookCatalogParams {
+  schoolPublishingCompanyId?: number;
+  languageId?: number;
+  bookTypeId?: number;
+  myBookTypeId?: number;
+  schoolBookCategoryId?: number;
+  schoolCategoryId?: number;
+  fromDate?: string;
+  toDate?: string;
+  isGetBookAvailable?: boolean;
+  searchKey?: string;
+  skip?: number;
+  take?: number;
+}
+
+export interface BookState {
+  bookCatalogs: BookCatalog[];
+  loading: boolean;
+  error: string | null;
+  pagination: {
+    current: number;
+    pageSize: number;
+    total: number;
+  };
+  filters: {
+    searchKey: string;
+    schoolPublishingCompanyId?: number | null;
+    languageId?: number | null;
+    bookTypeId?: number | null;
+    myBookTypeId?: number | null;
+    schoolBookCategoryId?: number | null;
+    schoolCategoryId?: number | null;
+    fromDate?: string | null;
+    toDate?: string | null;
+    isGetBookAvailable?: boolean | null;
+  };
+}
+
+export interface StudentState {
+  students: Student[];
+  selectedStudent: Student | null;
+  loading: boolean;
+  error: string | null;
+  pagination: {
+    current: number;
+    pageSize: number;
+    total: number;
+  };
+  filters: {
+    searchKey: string;
+    cardTypeId?: number | null;
+    cardStatus?: number | null;
+    teacherGroupSubjectId?: number | null;
+    isNotExpired?: number | null;
+    cardNumber?: string | null;
+    gradeCode?: string | null;
+    schoolClassId?: number | null;
+  };
+  gradeCodes: GradeCode[];
+  schoolClasses: SchoolClass[];
+  teacherGroupSubjects: TeacherGroupSubject[];
+  loadingGradeCodes: boolean;
+  loadingSchoolClasses: boolean;
+  loadingTeacherGroupSubjects: boolean;
 }
 
 export interface ApiRecord {

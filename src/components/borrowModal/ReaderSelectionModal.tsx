@@ -1,14 +1,26 @@
 "use client";
 
-import React, { useState } from "react";
-import { Modal, Input, Select, Table, Button } from "antd";
+import React, { useState, useEffect } from "react";
+import { Modal, Input, Select, Table, Button, Spin } from "antd";
 import { SearchOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
+import { useDispatch, useSelector } from "react-redux";
+import { RootState } from "@/redux/store";
+import {
+  fetchStudents,
+  updateFilters,
+  updatePagination,
+  fetchGradeCodes,
+  fetchSchoolClasses,
+  fetchTeacherGroupSubjects,
+} from "@/redux/slices/studentSlice";
+import { Student } from "@/types/schema";
+import dayjs from "dayjs";
 
 interface ReaderSelectionModalProps {
   visible: boolean;
   onCancel: () => void;
-  onSelect: (reader: ReaderInfo) => void;
+  onSelect: (cardNumber: string) => void;
 }
 
 interface ReaderInfo {
@@ -18,7 +30,42 @@ interface ReaderInfo {
   class: string;
   expiryDate: string;
   status: string;
+  totalBorrowedBooks: number;
+  totalBorrowingBooks: number;
+  totalReturnBooks: number;
 }
+
+// Helper function to convert Student to ReaderInfo
+const studentToReaderInfo = (student: Student): ReaderInfo => {
+  // Determine card type name based on cardTypeId
+  let cardTypeName = "";
+  if (student.cardTypeId === 1) {
+    cardTypeName = "Học sinh";
+  } else if (student.cardTypeId === 2) {
+    cardTypeName = "Giáo viên";
+  } else {
+    cardTypeName = "Khác";
+  }
+
+  return {
+    cardId: student.cardNumber,
+    name: student.fullName,
+    cardType: cardTypeName,
+    class: student.schoolClassName || student.teacherGroupSubjectName || "N/A",
+    expiryDate: dayjs(student.expireDate).format("DD/MM/YYYY"),
+    status:
+      student.cardStatus === 1
+        ? "Đang lưu thông"
+        : student.cardStatus === 2
+        ? "Chờ kích hoạt"
+        : student.cardStatus === 3
+        ? "Cấm mượn"
+        : "Khác",
+    totalBorrowedBooks: student.totalBorrowedBooks,
+    totalBorrowingBooks: student.totalBorrowingBooks,
+    totalReturnBooks: student.totalReturnBooks,
+  };
+};
 
 const { Option } = Select;
 
@@ -27,123 +74,128 @@ const ReaderSelectionModal: React.FC<ReaderSelectionModalProps> = ({
   onCancel,
   onSelect,
 }) => {
-  const [searchText, setSearchText] = useState("");
+  const dispatch = useDispatch();
+  const {
+    students,
+    loading,
+    pagination,
+    gradeCodes,
+    schoolClasses,
+    teacherGroupSubjects,
+    loadingGradeCodes,
+    loadingSchoolClasses,
+    loadingTeacherGroupSubjects,
+  } = useSelector((state: RootState) => state.student);
 
-  // Mock data for the table
-  const mockReaders: ReaderInfo[] = [
-    {
-      cardId: "0140133365",
-      name: "Bùi Khánh An",
-      cardType: "Học sinh",
-      class: "6A8",
-      expiryDate: "30/05/2028",
-      status: "Cấm mượn",
-    },
-    {
-      cardId: "2740125365",
-      name: "Đào Bá Khánh An",
-      cardType: "Học sinh",
-      class: "6A6",
-      expiryDate: "30/05/2028",
-      status: "Đang lưu thông",
-    },
-    {
-      cardId: "0132930157",
-      name: "Đinh Hà An",
-      cardType: "Học sinh",
-      class: "7A6",
-      expiryDate: "30/05/2027",
-      status: "Đang lưu thông",
-    },
-    {
-      cardId: "0133052618",
-      name: "Đinh Hà An",
-      cardType: "Học sinh",
-      class: "9A1",
-      expiryDate: "30/05/2026",
-      status: "Đang lưu thông",
-    },
-    {
-      cardId: "2648429185",
-      name: "Đỗ Khánh An",
-      cardType: "Học sinh",
-      class: "6A6",
-      expiryDate: "30/05/2028",
-      status: "Đang lưu thông",
-    },
-    {
-      cardId: "0117763035",
-      name: "Đỗ Thiên An",
-      cardType: "Học sinh",
-      class: "9A4",
-      expiryDate: "30/05/2026",
-      status: "Cấm mượn",
-    },
-    {
-      cardId: "0132639576",
-      name: "Hồ Hoài An",
-      cardType: "Học sinh",
-      class: "7A8",
-      expiryDate: "30/05/2027",
-      status: "Đang lưu thông",
-    },
-    {
-      cardId: "0133052059",
-      name: "Hồ Khánh An",
-      cardType: "Học sinh",
-      class: "7A3",
-      expiryDate: "30/05/2027",
-      status: "Đang lưu thông",
-    },
-    {
-      cardId: "3040125367",
-      name: "Hoàng Hà Hoài An",
-      cardType: "Học sinh",
-      class: "6A7",
-      expiryDate: "30/05/2028",
-      status: "Đang lưu thông",
-    },
-    {
-      cardId: "0140881712",
-      name: "Lại Thái An",
-      cardType: "Học sinh",
-      class: "7A5",
-      expiryDate: "30/05/2027",
-      status: "Đang lưu thông",
-    },
-    {
-      cardId: "0131998179",
-      name: "Lê Bảo An",
-      cardType: "Học sinh",
-      class: "6A9",
-      expiryDate: "30/05/2028",
-      status: "Đang lưu thông",
-    },
-    {
-      cardId: "0117761073",
-      name: "Lê Hà An",
-      cardType: "Học sinh",
-      class: "8A8",
-      expiryDate: "30/05/2027",
-      status: "Đang lưu thông",
-    },
-    {
-      cardId: "0133052734",
-      name: "Lê Minh An",
-      cardType: "Học sinh",
-      class: "9A4",
-      expiryDate: "30/05/2026",
-      status: "Đang lưu thông",
-    },
-  ];
+  const [searchText, setSearchText] = useState("");
+  const [cardNumber, setCardNumber] = useState("");
+  const [cardTypeFilter, setCardTypeFilter] = useState<number | null>(null);
+  const [cardStatusFilter, setCardStatusFilter] = useState<number | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [expiryFilter, setExpiryFilter] = useState<string | null>(null);
+  const [selectedGradeCode, setSelectedGradeCode] = useState<string | null>(
+    null
+  );
+
+  // Fetch students, grade codes, and teacher group subjects when the modal is opened
+  useEffect(() => {
+    if (visible) {
+      dispatch(fetchStudents({ page: 1, pageSize: pagination.pageSize }));
+      dispatch(fetchGradeCodes());
+      dispatch(fetchTeacherGroupSubjects());
+      console.log("Fetching teacher group subjects...");
+    }
+  }, [visible, dispatch, pagination.pageSize]);
+
+  // Log teacher group subjects when they change
+  useEffect(() => {
+    console.log("Teacher group subjects in component:", teacherGroupSubjects);
+  }, [teacherGroupSubjects]);
+
+  // Apply filters when they change
+  useEffect(() => {
+    if (visible) {
+      dispatch(
+        updateFilters({
+          searchKey: searchText,
+          cardTypeId: cardTypeFilter,
+          cardStatus: cardStatusFilter,
+          // isNotExpired được cập nhật riêng trong handleExpiryChange
+        })
+      );
+      dispatch(fetchStudents({ page: 1 }));
+    }
+  }, [dispatch, visible, searchText, cardTypeFilter, cardStatusFilter]);
+
+  // Convert students to ReaderInfo format
+  const readers: ReaderInfo[] = students
+    ? students.map(studentToReaderInfo)
+    : [];
 
   const handleSearch = (value: string) => {
     setSearchText(value);
+    // Search is handled by the useEffect above
+  };
+
+  const handleCardTypeChange = (value: string) => {
+    // reset filters
+    setSelectedGradeCode(null);
+    dispatch(updateFilters({ gradeCode: null, schoolClassId: null }));
+    if (value === "all") {
+      setCardTypeFilter(null);
+    } else if (value === "teacher") {
+      setCardTypeFilter(1); // 1 is for teachers
+    } else if (value === "student") {
+      setCardTypeFilter(2); // 2 is for students
+    }
+  };
+
+  const handleCardStatusChange = (value: string) => {
+    if (value === "all") {
+      setCardStatusFilter(null);
+    } else if (value === "active") {
+      setCardStatusFilter(1); // 1 - Đang lưu thông
+    } else if (value === "waiting") {
+      setCardStatusFilter(2); // 2 - Chờ kích hoạt
+    } else if (value === "banned") {
+      setCardStatusFilter(3); // 3 - Cấm mượn
+    } else if (value === "other") {
+      setCardStatusFilter(4); // 4 - Khác
+    }
+  };
+
+  const handleExpiryChange = (value: string) => {
+    setExpiryFilter(value);
+    if (value === "valid") {
+      dispatch(updateFilters({ isNotExpired: 1 }));
+    } else if (value === "expired") {
+      dispatch(updateFilters({ isNotExpired: 0 }));
+    } else {
+      dispatch(updateFilters({ isNotExpired: null }));
+    }
+    // Gọi fetchStudents để áp dụng bộ lọc mới
+    dispatch(fetchStudents({ page: 1 }));
+  };
+
+  const handlePageChange = (page: number) => {
+    dispatch(updatePagination({ current: page }));
+    dispatch(fetchStudents({ page }));
+  };
+
+  const handlePageSizeChange = (pageSize: number) => {
+    dispatch(updatePagination({ pageSize, current: 1 }));
+    dispatch(fetchStudents({ page: 1, pageSize }));
   };
 
   const handleSelect = (record: ReaderInfo) => {
-    onSelect(record);
+    onSelect(record.cardId);
     onCancel();
+  };
+
+  const handleSearchCardNumber = (value: string) => {
+    setCardNumber(value);
+    dispatch(updateFilters({ cardNumber: value }));
+    dispatch(fetchStudents({ page: 1 }));
   };
 
   const columns: ColumnsType<ReaderInfo> = [
@@ -162,8 +214,9 @@ const ReaderSelectionModal: React.FC<ReaderSelectionModalProps> = ({
         <Button
           type="primary"
           size="small"
-          className=" hover:bg-green-600"
+          className="hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
           onClick={() => handleSelect(record)}
+          disabled={record.status !== "Đang lưu thông"}
         >
           Chọn
         </Button>
@@ -208,7 +261,13 @@ const ReaderSelectionModal: React.FC<ReaderSelectionModalProps> = ({
       render: (status) => (
         <span
           className={
-            status === "Đang lưu thông" ? "text-green-500" : "text-red-500"
+            status === "Đang lưu thông"
+              ? "text-green-500"
+              : status === "Chờ kích hoạt"
+              ? "text-yellow-500"
+              : status === "Cấm mượn"
+              ? "text-red-500"
+              : "text-gray-500"
           }
         >
           {status}
@@ -217,14 +276,7 @@ const ReaderSelectionModal: React.FC<ReaderSelectionModalProps> = ({
     },
   ];
 
-  // Filter readers based on search text
-  const filteredReaders = searchText
-    ? mockReaders.filter(
-        (reader) =>
-          reader.name.toLowerCase().includes(searchText.toLowerCase()) ||
-          reader.cardId.includes(searchText)
-      )
-    : mockReaders;
+  // Filtering is now handled by the API through Redux actions
 
   return (
     <Modal
@@ -234,100 +286,270 @@ const ReaderSelectionModal: React.FC<ReaderSelectionModalProps> = ({
       width={1000}
       footer={null}
     >
-      <div className="mb-4 flex flex-wrap gap-4">
-        <div>
-          <div className="mb-2">Loại thẻ</div>
-          <Select defaultValue="all" style={{ width: 200 }}>
-            <Option value="all">-- Tất cả --</Option>
-            <Option value="student">Học sinh</Option>
-            <Option value="teacher">Giáo viên</Option>
-          </Select>
+      <div className="p-4 bg-gray-50 rounded-lg mb-6">
+        <div className="text-lg font-medium mb-3 text-gray-700 border-b pb-2">
+          Bộ lọc tìm kiếm
         </div>
 
-        <div>
-          <div className="mb-2">Trạng thái thẻ</div>
-          <Select defaultValue="all" style={{ width: 200 }}>
-            <Option value="all">-- Tất cả --</Option>
-            <Option value="active">Đang lưu thông</Option>
-            <Option value="inactive">Cấm mượn</Option>
-          </Select>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          {/* First row of filters */}
+          <div className="space-y-1">
+            <div className="font-medium text-gray-600">Loại thẻ</div>
+            <Select
+              defaultValue="all"
+              style={{ width: "100%" }}
+              onChange={handleCardTypeChange}
+              className="w-full"
+            >
+              <Option value="all">-- Tất cả --</Option>
+              <Option value="student">Học sinh</Option>
+              <Option value="teacher">Giáo viên</Option>
+            </Select>
+          </div>
+
+          <div className="space-y-1">
+            <div className="font-medium text-gray-600">Trạng thái thẻ</div>
+            <Select
+              defaultValue="all"
+              style={{ width: "100%" }}
+              onChange={handleCardStatusChange}
+              className="w-full"
+            >
+              <Option value="all">-- Tất cả --</Option>
+              <Option value="active">Đang lưu thông</Option>
+              <Option value="waiting">Chờ kích hoạt</Option>
+              <Option value="banned">Cấm mượn</Option>
+              <Option value="other">Khác</Option>
+            </Select>
+          </div>
+
+          <div className="space-y-1">
+            <div className="font-medium text-gray-600">Hạn sử dụng</div>
+            <Select
+              defaultValue="all"
+              style={{ width: "100%" }}
+              onChange={handleExpiryChange}
+              className="w-full"
+            >
+              <Option value="all">-- Tất cả --</Option>
+              <Option value="valid">Còn hạn</Option>
+              <Option value="expired">Hết hạn</Option>
+            </Select>
+          </div>
         </div>
 
-        <div>
-          <div className="mb-2">Hạn sử dụng</div>
-          <Select defaultValue="all" style={{ width: 200 }}>
-            <Option value="all">-- Tất cả --</Option>
-            <Option value="valid">Còn hạn</Option>
-            <Option value="expired">Hết hạn</Option>
-          </Select>
+        {/* Second row with conditional filters and search inputs */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {cardTypeFilter === 1 && (
+            <>
+              <div className="space-y-1">
+                <div className="font-medium text-gray-600">Tổ/Bộ môn</div>
+                <Select
+                  defaultValue="all"
+                  style={{ width: "100%" }}
+                  loading={loadingTeacherGroupSubjects}
+                  onChange={(value) => {
+                    if (value === "all") {
+                      dispatch(updateFilters({ teacherGroupSubjectId: null }));
+                    } else {
+                      dispatch(
+                        updateFilters({
+                          teacherGroupSubjectId: parseInt(value),
+                        })
+                      );
+                    }
+                    dispatch(fetchStudents({ page: 1 }));
+                  }}
+                  className="w-full"
+                >
+                  <Option value="all">-- Tất cả --</Option>
+                  {Array.isArray(teacherGroupSubjects) &&
+                  teacherGroupSubjects.length > 0 ? (
+                    teacherGroupSubjects.map((group) => (
+                      <Option key={group.id} value={group.id.toString()}>
+                        {group.name}
+                      </Option>
+                    ))
+                  ) : (
+                    <Option value="" disabled>
+                      Không có dữ liệu
+                    </Option>
+                  )}
+                </Select>
+              </div>
+            </>
+          )}
+          {cardTypeFilter === 2 && (
+            <>
+              <div className="space-y-1">
+                <div className="font-medium text-gray-600">Khối</div>
+                <Select
+                  defaultValue="all"
+                  style={{ width: "100%" }}
+                  loading={loadingGradeCodes}
+                  onChange={(value) => {
+                    if (value === "all") {
+                      dispatch(updateFilters({ gradeCode: null }));
+                      setSelectedGradeCode(null);
+                    } else {
+                      dispatch(updateFilters({ gradeCode: value }));
+                      setSelectedGradeCode(value);
+                      dispatch(fetchSchoolClasses(value));
+                    }
+                    dispatch(fetchStudents({ page: 1 }));
+                  }}
+                  className="w-full"
+                >
+                  <Option value="all">-- Tất cả --</Option>
+                  {gradeCodes?.map((grade) => (
+                    <Option key={grade.id} value={grade.code.toString()}>
+                      {grade.name}
+                    </Option>
+                  ))}
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <div className="font-medium text-gray-600">Lớp</div>
+                <Select
+                  defaultValue="all"
+                  style={{ width: "100%" }}
+                  loading={loadingSchoolClasses}
+                  onChange={(value) => {
+                    if (value === "all") {
+                      dispatch(updateFilters({ schoolClassId: null }));
+                    } else {
+                      dispatch(
+                        updateFilters({ schoolClassId: parseInt(value) })
+                      );
+                    }
+                    dispatch(fetchStudents({ page: 1 }));
+                  }}
+                  disabled={!selectedGradeCode}
+                  className="w-full"
+                >
+                  <Option value="all">-- Tất cả --</Option>
+                  {schoolClasses?.map((schoolClass) => (
+                    <Option
+                      key={schoolClass.id}
+                      value={schoolClass.id.toString()}
+                    >
+                      {schoolClass.name}
+                    </Option>
+                  ))}
+                </Select>
+              </div>
+            </>
+          )}
+
+          <div className="space-y-1">
+            <div className="font-medium text-gray-600">Tìm theo mã thẻ</div>
+            <Input
+              placeholder="Nhập mã thẻ..."
+              value={cardNumber}
+              onChange={(e) => handleSearchCardNumber(e.target.value)}
+              suffix={<SearchOutlined />}
+              className="w-full"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <div className="font-medium text-gray-600">Tìm kiếm</div>
+            <Input
+              placeholder="Tìm theo tên, lớp..."
+              value={searchText}
+              onChange={(e) => handleSearch(e.target.value)}
+              suffix={<SearchOutlined />}
+              className="w-full"
+            />
+          </div>
         </div>
       </div>
 
-      <div className="mb-4">
-        <Input
-          placeholder="Tìm kiếm"
-          value={searchText}
-          onChange={(e) => handleSearch(e.target.value)}
-          suffix={<SearchOutlined />}
-          style={{ width: 240 }}
-        />
+      <div className="border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-4">
+        {loading ? (
+          <div className="flex flex-col justify-center items-center py-12 bg-white">
+            <Spin size="large" />
+            <div className="mt-2 text-gray-500">Đang tải dữ liệu...</div>
+          </div>
+        ) : readers.length > 0 ? (
+          <Table
+            columns={columns}
+            dataSource={readers}
+            rowKey={(record) => `reader-selection-${record.cardId}`}
+            pagination={false}
+            size="middle"
+            rowClassName={(_, index) =>
+              index % 2 === 0
+                ? "bg-white hover:bg-blue-50"
+                : "bg-gray-50 hover:bg-blue-50"
+            }
+            className="border-collapse"
+          />
+        ) : (
+          <div className="text-center py-12 bg-gray-50 text-gray-500 flex flex-col items-center justify-center">
+            <div className="text-5xl mb-3">📚</div>
+            <div className="text-lg">Không tìm thấy dữ liệu phù hợp</div>
+            <div className="text-sm text-gray-400 mt-1">
+              Vui lòng thử lại với các bộ lọc khác
+            </div>
+          </div>
+        )}
       </div>
 
-      <div className="border border-gray-200 rounded mb-4">
-        <Table
-          columns={columns}
-          dataSource={filteredReaders}
-          rowKey={(record) => `reader-selection-${record.cardId}`}
-          pagination={false}
-          size="small"
-          rowClassName={(_, index) =>
-            index % 2 === 0 ? "bg-white" : "bg-gray-50"
-          }
-          className="border-collapse"
-        />
-      </div>
-
-      <div className="flex justify-between items-center text-sm">
-        <div className="flex items-center gap-1">
-          <Button
-            size="small"
-            className="flex items-center justify-center px-2 py-0 h-6"
-          >
-            «
-          </Button>
-          <Button
-            size="small"
-            className="flex items-center justify-center px-2 py-0 h-6 bg-gray-200"
-          >
-            1
-          </Button>
-          <Button
-            size="small"
-            className="flex items-center justify-center px-2 py-0 h-6"
-          >
-            »
-          </Button>
-          <span className="ml-2 text-gray-600">trên 38 trang</span>
+      <div className="flex flex-col md:flex-row justify-between items-center text-sm bg-gray-50 p-3 rounded-lg">
+        <div className="flex items-center gap-2 mb-3 md:mb-0">
+          <div className="flex items-center border border-gray-300 rounded overflow-hidden">
+            <Button
+              size="small"
+              className="flex items-center justify-center px-3 py-1 h-8 border-0 rounded-none hover:bg-blue-50"
+              disabled={pagination.current <= 1}
+              onClick={() => handlePageChange(pagination.current - 1)}
+            >
+              «
+            </Button>
+            <div className="px-3 py-1 bg-white border-x border-gray-300 min-w-[40px] text-center">
+              {pagination.current}
+            </div>
+            <Button
+              size="small"
+              className="flex items-center justify-center px-3 py-1 h-8 border-0 rounded-none hover:bg-blue-50"
+              disabled={
+                pagination.current >=
+                Math.ceil(pagination.total / pagination.pageSize)
+              }
+              onClick={() => handlePageChange(pagination.current + 1)}
+            >
+              »
+            </Button>
+          </div>
+          <span className="text-gray-600">
+            Trang {pagination.current} /{" "}
+            {Math.max(1, Math.ceil(pagination.total / pagination.pageSize))}
+          </span>
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           <span className="text-gray-600">Hiển thị</span>
           <Select
-            defaultValue="50"
+            defaultValue={pagination.pageSize.toString()}
             size="small"
-            style={{ width: 60 }}
-            className="text-xs"
+            style={{ width: 70 }}
+            className="text-sm"
+            onChange={(value) => handlePageSizeChange(Number(value))}
+            popupMatchSelectWidth={false}
           >
             <Option value="10">10</Option>
             <Option value="20">20</Option>
             <Option value="50">50</Option>
             <Option value="100">100</Option>
           </Select>
-          <span className="text-gray-600">của 1 trang</span>
-        </div>
+          <span className="text-gray-600 mr-4">mục / trang</span>
 
-        <div>
-          <span className="text-gray-600">Tổng 1.856 bản ghi</span>
+          <div className="bg-blue-50 px-3 py-1 rounded border border-blue-100">
+            <span className="text-blue-700 font-medium">
+              Tổng cộng: {pagination.total} bạn đọc
+            </span>
+          </div>
         </div>
       </div>
     </Modal>

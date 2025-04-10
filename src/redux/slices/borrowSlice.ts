@@ -6,6 +6,8 @@ const initialState: BorrowState = {
   loading: false,
   error: null,
   selectedLoan: null,
+  loanCode: null,
+  loadingLoanCode: false,
   pagination: {
     current: 1,
     pageSize: 50,
@@ -130,6 +132,21 @@ const borrowSlice = createSlice({
       state.error = action.payload;
       state.selectedLoan = null;
     },
+
+    // Get loan code
+    fetchLoanCode: (state) => {
+      state.loadingLoanCode = true;
+      state.error = null;
+    },
+    fetchLoanCodeSuccess: (state, action: PayloadAction<string>) => {
+      state.loadingLoanCode = false;
+      state.loanCode = action.payload;
+      state.error = null;
+    },
+    fetchLoanCodeFailure: (state, action: PayloadAction<string>) => {
+      state.loadingLoanCode = false;
+      state.error = action.payload;
+    },
   },
 });
 
@@ -149,6 +166,9 @@ export const {
   fetchStudent,
   fetchStudentSuccess,
   fetchStudentFailure,
+  fetchLoanCode,
+  fetchLoanCodeSuccess,
+  fetchLoanCodeFailure,
 } = borrowSlice.actions;
 
 export default borrowSlice.reducer;

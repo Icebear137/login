@@ -1,4 +1,4 @@
-import { put, select, takeLatest } from "redux-saga/effects";
+import { put, select, takeLatest, call } from "redux-saga/effects";
 import { PayloadAction } from "@reduxjs/toolkit";
 import {
   fetchBorrowRecords,
@@ -10,6 +10,9 @@ import {
   fetchLoanDetailById,
   fetchLoanDetailByIdSuccess,
   fetchLoanDetailByIdFailure,
+  fetchLoanCode,
+  fetchLoanCodeSuccess,
+  fetchLoanCodeFailure,
 } from "../slices/borrowSlice";
 import { RootState } from "../store";
 import { borrowService } from "@/services/borrowService";
@@ -142,8 +145,30 @@ function* fetchLoanDetailByIdSaga(action: PayloadAction<string>) {
   }
 }
 
+function* fetchLoanCodeSaga() {
+  try {
+    // @ts-expect-error API call in saga
+    const response = yield call(borrowService.getLoanCode);
+    console.log("Loan code response:", response.data);
+
+    // Trả về data từ response
+    // API trả về { code, data, message } và chúng ta chỉ cần data
+    const loanCode = response.data;
+    console.log("Extracted loan code:", loanCode);
+    yield put(fetchLoanCodeSuccess(loanCode));
+  } catch (error) {
+    console.error("Error fetching loan code:", error);
+    yield put(
+      fetchLoanCodeFailure(
+        error instanceof Error ? error.message : "Không thể tạo mã phiếu mượn"
+      )
+    );
+  }
+}
+
 export function* borrowSaga() {
   yield takeLatest(fetchBorrowRecords.type, fetchBorrowRecordsSaga);
   yield takeLatest(fetchBookBorrowRecords.type, fetchBookBorrowRecordsSaga);
   yield takeLatest(fetchLoanDetailById.type, fetchLoanDetailByIdSaga);
+  yield takeLatest(fetchLoanCode.type, fetchLoanCodeSaga);
 }
