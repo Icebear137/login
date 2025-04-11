@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { Table, Select, Input, DatePicker, Button, Space } from "antd";
+import { Table, Select, Input, DatePicker, Button, Space, Tag } from "antd";
 import BorrowModal from "../borrowModal/BorrowModal";
 import LoanDetailModal from "./LoanDetailModal";
 import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
@@ -312,6 +312,9 @@ const BorrowTable = () => {
       dataIndex: "status",
       key: "status",
       width: 100,
+      render: (status) => (
+        <Tag color={status === "Đã trả" ? "green" : "red"}>{status}</Tag>
+      ),
     },
   ];
 
