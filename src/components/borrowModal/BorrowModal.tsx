@@ -10,13 +10,13 @@ import {
   Select,
   Table,
   Space,
-  message,
   Tag,
 } from "antd";
+import { useMessage } from "@/components/MessageProvider";
 import {
   DeleteOutlined,
   PlusOutlined,
-  LoadingOutlined, // Sẽ sử dụng sau này
+  LoadingOutlined,
   IdcardOutlined,
   UserOutlined,
   TeamOutlined,
@@ -112,9 +112,6 @@ const BorrowModal: React.FC<BorrowModalProps> = ({
   ]);
   const [readerForm] = Form.useForm();
 
-  // Mock data for the table
-  const mockBookData: BookItem[] = [];
-
   const dispatch = useDispatch();
   const { selectedStudent, loading: studentLoading } = useSelector(
     (state: RootState) => state.student
@@ -125,6 +122,9 @@ const BorrowModal: React.FC<BorrowModalProps> = ({
   );
 
   const { userInfo } = useSelector((state: RootState) => state.user);
+
+  // Get message API
+  const messageApi = useMessage();
 
   // State for confirmation modal
   const [confirmModalVisible, setConfirmModalVisible] = useState(false);
@@ -197,7 +197,7 @@ const BorrowModal: React.FC<BorrowModalProps> = ({
   // Effect to handle borrow request success
   useEffect(() => {
     if (borrowRequestSuccess) {
-      message.success("Mượn sách thành công!");
+      messageApi.success("Mượn sách thành công!");
 
       // Call onSuccess callback if provided
       if (onSuccess) {
@@ -208,9 +208,9 @@ const BorrowModal: React.FC<BorrowModalProps> = ({
     }
 
     if (borrowError) {
-      message.error(borrowError);
+      messageApi.error(borrowError);
     }
-  }, [borrowRequestSuccess, borrowError, handleFinish, onSuccess]);
+  }, [borrowRequestSuccess, borrowError, handleFinish, onSuccess, messageApi]);
 
   // Handle book selection
   const handleBookSelect = (books: BookInfo[]) => {
@@ -242,8 +242,6 @@ const BorrowModal: React.FC<BorrowModalProps> = ({
     // Get the book to be deleted
     const bookToDelete = bookData.find((item) => item.key === key);
     if (!bookToDelete) return;
-
-    // We don't need to extract the book id anymore as we're syncing with BookSelectionModal
 
     // Remove the book from bookData
     setBookData(bookData.filter((item) => item.key !== key));
@@ -357,17 +355,17 @@ const BorrowModal: React.FC<BorrowModalProps> = ({
   const showConfirmModal = () => {
     // Validate required fields
     if (!selectedCardId) {
-      message.error("Vui lòng chọn độc giả");
+      messageApi.error("Vui lòng chọn độc giả");
       return;
     }
 
     if (bookData.length === 0) {
-      message.error("Vui lòng chọn ít nhất một quyển sách");
+      messageApi.error("Vui lòng chọn ít nhất một quyển sách");
       return;
     }
 
     if (!borrowDate) {
-      message.error("Vui lòng chọn ngày mượn");
+      messageApi.error("Vui lòng chọn ngày mượn");
       return;
     }
 
@@ -745,7 +743,7 @@ const BorrowModal: React.FC<BorrowModalProps> = ({
           </h3>
           <Table
             columns={columns}
-            dataSource={bookData.length > 0 ? bookData : mockBookData}
+            dataSource={bookData}
             pagination={false}
             locale={{
               emptyText: (

@@ -97,6 +97,7 @@ const BorrowTable = () => {
     return date.toLocaleDateString("vi-VN");
   };
 
+  // Fetch initial data when component mounts or view mode changes
   useEffect(() => {
     if (viewMode === "loan") {
       dispatch(fetchBorrowRecords({}));
@@ -398,21 +399,21 @@ const BorrowTable = () => {
       dispatch(fetchBookBorrowRecords({ page: 1 }));
     }
   };
+
   const handleSearchRegistrationNumber = (value: string) => {
     dispatch(updateFilters({ registrationNumber: value }));
     if (viewMode === "loan") {
       dispatch(fetchBorrowRecords({ page: 1 }));
-    }
-    if (viewMode === "book") {
+    } else {
       dispatch(fetchBookBorrowRecords({ page: 1 }));
     }
   };
+
   const handleSearchTitle = (value: string) => {
     dispatch(updateFilters({ title: value }));
     if (viewMode === "loan") {
       dispatch(fetchBorrowRecords({ page: 1 }));
-    }
-    if (viewMode === "book") {
+    } else {
       dispatch(fetchBookBorrowRecords({ page: 1 }));
     }
   };

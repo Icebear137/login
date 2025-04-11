@@ -1,16 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import {
-  Modal,
-  Input,
-  Table,
-  Button,
-  Checkbox,
-  Spin,
-  Select,
-  message,
-} from "antd";
+import { Modal, Input, Table, Button, Checkbox, Spin, Select } from "antd";
+import { useMessage } from "@/components/MessageProvider";
 import { SearchOutlined, LoadingOutlined } from "@ant-design/icons";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/redux/store";
@@ -23,7 +15,6 @@ import {
 } from "@/redux/slices/bookSlice";
 import { BookRegistration } from "@/types/schema";
 import type { ColumnsType } from "antd/es/table";
-import { toast } from "react-toastify";
 
 interface BookSelectionModalProps {
   visible: boolean;
@@ -49,6 +40,7 @@ interface BookInfo {
 const { Option } = Select;
 
 const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
+  // Component props
   visible,
   onCancel,
   onSelect,
@@ -84,6 +76,7 @@ const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
   };
 
   const dispatch = useDispatch();
+  const messageApi = useMessage();
   const {
     bookCatalogs,
     bookTypes,
@@ -196,7 +189,7 @@ const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
 
       // If adding one more book would exceed the limit
       if (totalSelectedBooks + 1 > remainingBooksAllowed) {
-        toast.error(
+        messageApi.error(
           `Bạn chỉ có thể mượn tối đa ${remainingBooksAllowed} quyển sách (bao gồm cả sách đang mượn)!`
         );
         return;
@@ -225,7 +218,7 @@ const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
 
       // Show message if quantity is 0 due to limit
       if (initialQuantity === 0) {
-        message.warning(
+        messageApi.warning(
           `Bạn đã đạt giới hạn ${remainingBooksAllowed} quyển sách. Không thể tăng số lượng.`
         );
       }
@@ -271,7 +264,7 @@ const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
       quantity = Math.max(0, remainingBooksAllowed - totalOtherBooks);
 
       // Show warning message
-      message.warning(
+      messageApi.warning(
         `Bạn chỉ có thể mượn tối đa ${remainingBooksAllowed} quyển sách (bao gồm cả sách đang mượn)!`
       );
     }
@@ -314,13 +307,9 @@ const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
       totalSelectedQuantity += book.borrowQuantity || 0;
     }
 
-    console.log("Total selected quantity:", totalSelectedQuantity);
-    console.log("Remaining books allowed:", remainingBooksAllowed);
-    console.log("Selected books:", selectedBooks);
-
     // Check if no books with quantity > 0 are selected
     if (totalSelectedQuantity === 0) {
-      message.error(
+      messageApi.error(
         "Vui lòng chọn ít nhất một quyển sách với số lượng lớn hơn 0"
       );
       return;
@@ -328,11 +317,9 @@ const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
 
     // Check if total quantity exceeds the remaining allowed books
     if (totalSelectedQuantity > remainingBooksAllowed) {
-      console.log("Showing error message");
       // Use message.error for error notification
-      message.error(
-        `Bạn chỉ có thể mượn tối đa ${remainingBooksAllowed} quyển sách (bao gồm cả sách đang mượn)!`,
-        5
+      messageApi.error(
+        `Bạn chỉ có thể mượn tối đa ${remainingBooksAllowed} quyển sách (bao gồm cả sách đang mượn)!`
       );
       return; // Don't update the table in BorrowModal
     }
