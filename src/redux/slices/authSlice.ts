@@ -1,13 +1,6 @@
 "use client";
 
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { toast } from "react-toastify";
-import {
-  LOGIN_REQUEST,
-  LOGIN_SUCCESS,
-  LOGIN_FAILURE,
-  LOGOUT_SUCCESS,
-} from "../sagas/authSaga";
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -19,12 +12,16 @@ interface AuthState {
   error: string | null;
 }
 
+// Initialize state with values from localStorage if available
 const initialState: AuthState = {
   isAuthenticated: false,
   token: null,
   username: "",
   password: "",
-  selectedSchoolId: null,
+  selectedSchoolId:
+    typeof window !== "undefined"
+      ? localStorage.getItem("selectedSchoolId")
+      : null,
   isLoading: false,
   error: null,
 };
@@ -41,6 +38,8 @@ const authSlice = createSlice({
     },
     setSelectedSchoolId: (state, action: PayloadAction<string>) => {
       state.selectedSchoolId = action.payload;
+      // Save to localStorage
+      localStorage.setItem("selectedSchoolId", action.payload);
     },
     // Reducer cho các action của saga
     loginRequest: (state) => {

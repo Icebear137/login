@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Modal, Input, Select, Table, Button, Spin } from "antd";
+import { Modal, Input, Select, Table, Button, Spin, Tag } from "antd";
 import { SearchOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { useDispatch, useSelector } from "react-redux";
@@ -253,19 +253,19 @@ const ReaderSelectionModal: React.FC<ReaderSelectionModalProps> = ({
       key: "status",
       className: "",
       render: (status) => (
-        <span
-          className={
+        <Tag
+          color={
             status === "Đang lưu thông"
-              ? "text-green-500"
+              ? "green"
               : status === "Chờ kích hoạt"
-              ? "text-yellow-500"
+              ? "yellow"
               : status === "Cấm mượn"
-              ? "text-red-500"
-              : "text-gray-500"
+              ? "red"
+              : "gray"
           }
         >
           {status}
-        </span>
+        </Tag>
       ),
     },
   ];

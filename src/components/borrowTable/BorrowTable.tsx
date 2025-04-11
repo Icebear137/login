@@ -679,6 +679,12 @@ const BorrowTable = () => {
           loading={loading}
           scroll={{ x: true }}
           size="middle"
+          bordered
+          rowClassName={(_, index) =>
+            index % 2 === 0
+              ? "bg-white hover:bg-blue-50"
+              : "bg-gray-50 hover:bg-blue-50"
+          }
         />
       ) : (
         <Table
@@ -705,6 +711,12 @@ const BorrowTable = () => {
           loading={loading}
           scroll={{ x: true }}
           size="middle"
+          bordered
+          rowClassName={(_, index) =>
+            index % 2 === 0
+              ? "bg-white hover:bg-blue-50"
+              : "bg-gray-50 hover:bg-blue-50"
+          }
         />
       )}
 

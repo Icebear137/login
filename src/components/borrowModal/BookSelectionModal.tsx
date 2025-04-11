@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Modal, Input, Table, Button, Checkbox, Spin, Select } from "antd";
+import { Modal, Input, Table, Button, Checkbox, Spin, Select, Tag } from "antd";
 import { useMessage } from "@/components/MessageProvider";
 import { SearchOutlined, LoadingOutlined } from "@ant-design/icons";
 import { useDispatch, useSelector } from "react-redux";
@@ -521,9 +521,9 @@ const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
       render: (_, record) => (
         <div>
           {record.available > 0 ? (
-            <span className="text-green-600">Sách đang lưu thông</span>
+            <Tag color="green">Sách đang lưu thông</Tag>
           ) : (
-            <span className="text-red-600">Sách chưa lưu thông</span>
+            <Tag color="red">Sách chưa lưu thông</Tag>
           )}
         </div>
       ),
@@ -627,6 +627,12 @@ const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
           }}
           size="middle"
           loading={loading}
+          bordered
+          rowClassName={(_, index) =>
+            index % 2 === 0
+              ? "bg-white hover:bg-blue-50"
+              : "bg-gray-50 hover:bg-blue-50"
+          }
         />
       ) : (
         <Table
@@ -655,6 +661,11 @@ const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
           size="middle"
           bordered
           loading={loadingBookRegistrations}
+          rowClassName={(_, index) =>
+            index % 2 === 0
+              ? "bg-white hover:bg-blue-50"
+              : "bg-gray-50 hover:bg-blue-50"
+          }
         />
       )}
 

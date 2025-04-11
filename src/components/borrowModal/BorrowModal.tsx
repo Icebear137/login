@@ -696,6 +696,10 @@ const BorrowModal: React.FC<BorrowModalProps> = ({
                       onChange={(date) => setBorrowDate(date)}
                       style={{ width: "100%" }}
                       className="rounded-md"
+                      disabledDate={(current) => {
+                        // Disable dates after today
+                        return current && current > dayjs().endOf("day");
+                      }}
                       suffixIcon={
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
