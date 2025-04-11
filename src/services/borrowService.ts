@@ -1,5 +1,5 @@
 import apiClient from "./apiClient";
-import { BorrowParams, BookObject } from "@/types/schema";
+import { BorrowParams, BookObject, BorrowRequest } from "@/types/schema";
 
 export const borrowService = {
   getBorrowRecords: async (params: BorrowParams) => {
@@ -22,6 +22,10 @@ export const borrowService = {
     const response = await apiClient.get(
       "/loan-record/genarate-loan-code-by-type/1"
     );
+    return response.data;
+  },
+  sendBorrowRequest: async (request: BorrowRequest) => {
+    const response = await apiClient.post("/loan-record/borrow", request);
     return response.data;
   },
 };

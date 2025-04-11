@@ -417,6 +417,15 @@ const BorrowTable = () => {
     }
   };
 
+  // Function to refresh data based on current view mode
+  const refreshData = () => {
+    if (viewMode === "loan") {
+      dispatch(fetchBorrowRecords({ page: 1 }));
+    } else {
+      dispatch(fetchBookBorrowRecords({ page: 1 }));
+    }
+  };
+
   const handleViewModeChange = (mode: "loan" | "book") => {
     setViewMode(mode);
     // Reset filters when changing view mode
@@ -701,6 +710,7 @@ const BorrowTable = () => {
       <BorrowModal
         visible={modalVisible}
         onCancel={() => setModalVisible(false)}
+        onSuccess={refreshData} // Refresh data when borrow is successful
       />
 
       <LoanDetailModal

@@ -70,11 +70,11 @@ const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
 
   // Create a custom handler for modal cancel to reset borrowQuantity
   const handleModalCancel = () => {
-    // Reset borrowQuantity to 1 for all books
+    // Reset borrowQuantity to 0 for all books
     if (selectedBooks.length > 0) {
       const resetBooks = selectedBooks.map((book) => ({
         ...book,
-        borrowQuantity: 1,
+        borrowQuantity: 0,
       }));
       setSelectedBooks(resetBooks);
     }
@@ -202,17 +202,33 @@ const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
         return;
       }
 
-      // When selecting a book, initialize borrowQuantity to 1
+      // Check if we can add this book with quantity 1
+      const totalCurrentQuantity = selectedBooks.reduce(
+        (total, b) => total + (b.borrowQuantity || 0),
+        0
+      );
+
+      // Initialize borrowQuantity based on remaining allowed books
+      const initialQuantity =
+        totalCurrentQuantity < remainingBooksAllowed ? 1 : 0;
+
       // Make sure to include all necessary fields based on the view mode
       const bookWithQuantity = {
         ...book,
-        borrowQuantity: 1,
+        borrowQuantity: initialQuantity,
         // Ensure these fields are included for both view modes
         registrationNumber: book.registrationNumber || "",
         publisher: book.publisher || "",
         publishYear: book.publishYear || "",
       };
       setSelectedBooks([...selectedBooks, bookWithQuantity]);
+
+      // Show message if quantity is 0 due to limit
+      if (initialQuantity === 0) {
+        message.warning(
+          `Bạn đã đạt giới hạn ${remainingBooksAllowed} quyển sách. Không thể tăng số lượng.`
+        );
+      }
     }
   };
 
@@ -227,7 +243,7 @@ const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
 
     if (!book) return;
 
-    // Ensure quantity is valid (minimum 1, maximum available)
+    // Ensure quantity is valid (minimum 0, maximum available)
     let available = 1;
 
     if (viewMode === "title" && "available" in book) {
@@ -238,23 +254,30 @@ const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
       available = bookReg.bookStatusId === 1 ? 1 : 0;
     }
 
+    // Don't allow negative quantities
+    if (quantity < 0) {
+      quantity = 0;
+    }
+
     // Calculate the total quantity of all selected books except the current one
     const totalOtherBooks = selectedBooks.reduce(
-      (total, b) => total + (b.id !== bookId ? b.borrowQuantity || 1 : 0),
+      (total, b) => total + (b.id !== bookId ? b.borrowQuantity || 0 : 0),
       0
     );
 
     // Check if the new quantity would exceed the remaining allowed books
     if (totalOtherBooks + quantity > remainingBooksAllowed) {
-      toast.error(
+      // Set quantity to maximum allowed
+      quantity = Math.max(0, remainingBooksAllowed - totalOtherBooks);
+
+      // Show warning message
+      message.warning(
         `Bạn chỉ có thể mượn tối đa ${remainingBooksAllowed} quyển sách (bao gồm cả sách đang mượn)!`
       );
-      // Use the maximum allowed quantity instead
-      quantity = remainingBooksAllowed - totalOtherBooks;
     }
 
-    // Ensure quantity is valid (minimum 1, maximum available and allowed)
-    const validQuantity = Math.max(1, Math.min(quantity, available));
+    // Ensure quantity doesn't exceed available books
+    const validQuantity = Math.min(quantity, available);
 
     // Update the selected books with the new quantity
     setSelectedBooks(
@@ -288,12 +311,20 @@ const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
     // Calculate total quantity of selected books
     let totalSelectedQuantity = 0;
     for (const book of selectedBooks) {
-      totalSelectedQuantity += book.borrowQuantity || 1;
+      totalSelectedQuantity += book.borrowQuantity || 0;
     }
 
     console.log("Total selected quantity:", totalSelectedQuantity);
     console.log("Remaining books allowed:", remainingBooksAllowed);
     console.log("Selected books:", selectedBooks);
+
+    // Check if no books with quantity > 0 are selected
+    if (totalSelectedQuantity === 0) {
+      message.error(
+        "Vui lòng chọn ít nhất một quyển sách với số lượng lớn hơn 0"
+      );
+      return;
+    }
 
     // Check if total quantity exceeds the remaining allowed books
     if (totalSelectedQuantity > remainingBooksAllowed) {
@@ -306,8 +337,13 @@ const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
       return; // Don't update the table in BorrowModal
     }
 
+    // Filter out books with quantity 0
+    const booksToAdd = selectedBooks.filter(
+      (book) => (book.borrowQuantity || 0) > 0
+    );
+
     // If quantity is valid, update the table in BorrowModal
-    onSelect(selectedBooks);
+    onSelect(booksToAdd);
     handleModalCancel();
   };
 
@@ -378,23 +414,29 @@ const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
       key: "borrowQuantity",
       className: "",
       align: "center",
-      render: (_, record) => (
-        <Input
-          type="number"
-          min={1}
-          max={record.available}
-          disabled={
-            !selectedBooks.some((b) => b.id === record.id) ||
-            record.available <= 0
-          }
-          defaultValue={1}
-          value={record.borrowQuantity}
-          onChange={(e) =>
-            handleQuantityChange(record.id, parseInt(e.target.value, 10))
-          }
-          style={{ width: 70 }}
-        />
-      ),
+      render: (_, record) => {
+        // Find the selected book if it exists
+        const selectedBook = selectedBooks.find((b) => b.id === record.id);
+        // Get the current quantity (default to 0)
+        const currentQuantity = selectedBook?.borrowQuantity || 0;
+
+        return (
+          <Input
+            type="number"
+            min={0}
+            max={record.available}
+            disabled={
+              !selectedBooks.some((b) => b.id === record.id) ||
+              record.available <= 0
+            }
+            value={currentQuantity}
+            onChange={(e) =>
+              handleQuantityChange(record.id, parseInt(e.target.value, 10))
+            }
+            style={{ width: 70 }}
+          />
+        );
+      },
     },
   ];
 
@@ -455,6 +497,35 @@ const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
       dataIndex: "author",
       key: "author",
       width: 150,
+    },
+    {
+      title: "Số lượng mượn",
+      key: "borrowQuantity",
+      width: 120,
+      align: "center",
+      render: (_, record) => {
+        // Find the selected book if it exists
+        const selectedBook = selectedBooks.find((b) => b.id === record.id);
+        // Get the current quantity (default to 0)
+        const currentQuantity = selectedBook?.borrowQuantity || 0;
+
+        return (
+          <Input
+            type="number"
+            min={0}
+            max={record.available}
+            disabled={
+              !selectedBooks.some((b) => b.id === record.id) ||
+              record.available <= 0
+            }
+            value={currentQuantity}
+            onChange={(e) =>
+              handleQuantityChange(record.id, parseInt(e.target.value, 10))
+            }
+            style={{ width: 70 }}
+          />
+        );
+      },
     },
     {
       title: "Tình trạng sách",

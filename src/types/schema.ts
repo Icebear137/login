@@ -157,6 +157,14 @@ export interface LoanCodeResponse {
   message: string;
 }
 
+export interface BorrowRequest {
+  loanCode: string;
+  cardNumber: string;
+  loanDate: string;
+  notes: string;
+  registrationNumbers: string[];
+}
+
 export interface BorrowState {
   // Using any[] because records can be either ApiRecord[] or ApiBookRecord[] depending on the view mode
   records: any[];
@@ -165,6 +173,8 @@ export interface BorrowState {
   selectedLoan: LoanDetail | null;
   loanCode: string;
   loadingLoanCode: boolean;
+  sendingBorrowRequest: boolean;
+  borrowRequestSuccess: boolean;
   pagination: {
     current: number;
     pageSize: number;

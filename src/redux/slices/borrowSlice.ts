@@ -1,5 +1,10 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { BorrowRecord, BorrowState, LoanDetail } from "@/types/schema";
+import {
+  BorrowRecord,
+  BorrowState,
+  LoanDetail,
+  BorrowRequest,
+} from "@/types/schema";
 
 const initialState: BorrowState = {
   records: [],
@@ -8,6 +13,8 @@ const initialState: BorrowState = {
   selectedLoan: null,
   loanCode: null,
   loadingLoanCode: false,
+  sendingBorrowRequest: false,
+  borrowRequestSuccess: false,
   pagination: {
     current: 1,
     pageSize: 50,
@@ -147,6 +154,26 @@ const borrowSlice = createSlice({
       state.loadingLoanCode = false;
       state.error = action.payload;
     },
+    sendBorrowRequest: (state, action: PayloadAction<BorrowRequest>) => {
+      state.sendingBorrowRequest = true;
+      state.borrowRequestSuccess = false;
+      state.error = null;
+    },
+    sendBorrowRequestSuccess: (state) => {
+      state.sendingBorrowRequest = false;
+      state.borrowRequestSuccess = true;
+      state.error = null;
+    },
+    sendBorrowRequestFailure: (state, action: PayloadAction<string>) => {
+      state.sendingBorrowRequest = false;
+      state.borrowRequestSuccess = false;
+      state.error = action.payload;
+    },
+    resetBorrowRequestState: (state) => {
+      state.sendingBorrowRequest = false;
+      state.borrowRequestSuccess = false;
+      state.error = null;
+    },
   },
 });
 
@@ -169,6 +196,10 @@ export const {
   fetchLoanCode,
   fetchLoanCodeSuccess,
   fetchLoanCodeFailure,
+  sendBorrowRequest,
+  sendBorrowRequestSuccess,
+  sendBorrowRequestFailure,
+  resetBorrowRequestState,
 } = borrowSlice.actions;
 
 export default borrowSlice.reducer;

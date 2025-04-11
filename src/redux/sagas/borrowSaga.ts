@@ -13,9 +13,13 @@ import {
   fetchLoanCode,
   fetchLoanCodeSuccess,
   fetchLoanCodeFailure,
+  sendBorrowRequest,
+  sendBorrowRequestSuccess,
+  sendBorrowRequestFailure,
 } from "../slices/borrowSlice";
 import { RootState } from "../store";
 import { borrowService } from "@/services/borrowService";
+import { BorrowRequest } from "@/types/schema";
 
 function* fetchBorrowRecordsSaga(
   action: PayloadAction<{ page?: number; pageSize?: number }>
@@ -165,9 +169,42 @@ function* fetchLoanCodeSaga() {
   }
 }
 
+function* sendBorrowRequestSaga(action: PayloadAction<BorrowRequest>) {
+  try {
+    // Gọi API để gửi yêu cầu mượn sách
+    const response = yield call(
+      borrowService.sendBorrowRequest,
+      action.payload
+    );
+
+    // Kiểm tra response
+    if (response && response.code === "1") {
+      // Nếu thành công, dispatch action success
+      yield put(sendBorrowRequestSuccess());
+    } else {
+      // Nếu thất bại, dispatch action failure với thông báo lỗi
+      yield put(
+        sendBorrowRequestFailure(
+          response?.message || "Gửi yêu cầu mượn sách thất bại"
+        )
+      );
+    }
+  } catch (error) {
+    console.error("Error sending borrow request:", error);
+    yield put(
+      sendBorrowRequestFailure(
+        error instanceof Error
+          ? error.message
+          : "Gửi yêu cầu mượn sách thất bại"
+      )
+    );
+  }
+}
+
 export function* borrowSaga() {
   yield takeLatest(fetchBorrowRecords.type, fetchBorrowRecordsSaga);
   yield takeLatest(fetchBookBorrowRecords.type, fetchBookBorrowRecordsSaga);
   yield takeLatest(fetchLoanDetailById.type, fetchLoanDetailByIdSaga);
   yield takeLatest(fetchLoanCode.type, fetchLoanCodeSaga);
+  yield takeLatest(sendBorrowRequest.type, sendBorrowRequestSaga);
 }

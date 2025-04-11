@@ -10,12 +10,20 @@ import {
   Select,
   Table,
   Space,
+  message,
+  Tag,
 } from "antd";
 import {
   DeleteOutlined,
   PlusOutlined,
   LoadingOutlined, // Sẽ sử dụng sau này
+  IdcardOutlined,
+  UserOutlined,
+  TeamOutlined,
+  UserAddOutlined,
 } from "@ant-design/icons";
+import { MdBarcodeReader } from "react-icons/md";
+import { BsUpcScan } from "react-icons/bs";
 import ReaderSelectionModal from "./ReaderSelectionModal";
 import BookSelectionModal from "./BookSelectionModal";
 import type { ColumnsType } from "antd/es/table";
@@ -23,12 +31,18 @@ import dayjs from "dayjs";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/redux/store";
 import { fetchStudentByCardNumber } from "@/redux/slices/studentSlice";
-import { fetchLoanCode } from "@/redux/slices/borrowSlice";
+import {
+  fetchLoanCode,
+  sendBorrowRequest,
+  resetBorrowRequestState,
+} from "@/redux/slices/borrowSlice";
+// Import fetchUserInfo from userSlice
 import { fetchUserInfo } from "@/redux/slices/userSlice";
 
 interface BorrowModalProps {
   visible: boolean;
   onCancel: () => void;
+  onSuccess?: () => void; // Callback khi mượn sách thành công
 }
 
 interface BookItem {
@@ -53,22 +67,13 @@ interface BookInfo {
   registrationNumber?: string;
 }
 
-// Interface không còn cần thiết vì chúng ta sử dụng Student từ API
-// interface ReaderInfo {
-//   cardId: string;
-//   name: string;
-//   cardType: string;
-//   class: string;
-//   expiryDate: string;
-//   status: string;
-//   totalBorrowedBooks: number;
-//   totalBorrowingBooks: number;
-//   totalReturnBooks: number;
-// }
-
 const { Option } = Select;
 
-const BorrowModal: React.FC<BorrowModalProps> = ({ visible, onCancel }) => {
+const BorrowModal: React.FC<BorrowModalProps> = ({
+  visible,
+  onCancel,
+  onSuccess,
+}) => {
   // Function to reset all reader data - wrapped in useCallback to avoid dependency issues
   // Khai báo state trước khi sử dụng trong useCallback
   const [bookData, setBookData] = useState<BookItem[]>([]);
@@ -121,6 +126,16 @@ const BorrowModal: React.FC<BorrowModalProps> = ({ visible, onCancel }) => {
 
   const { userInfo } = useSelector((state: RootState) => state.user);
 
+  // State for confirmation modal
+  const [confirmModalVisible, setConfirmModalVisible] = useState(false);
+
+  // State for tracking borrow request status
+  const {
+    sendingBorrowRequest,
+    borrowRequestSuccess,
+    error: borrowError,
+  } = useSelector((state: RootState) => state.borrow);
+
   // Handle reader selection
   const handleReaderSelect = (cardNumber: string) => {
     setSelectedCardId(cardNumber);
@@ -162,6 +177,13 @@ const BorrowModal: React.FC<BorrowModalProps> = ({ visible, onCancel }) => {
     }
   }, [selectedStudent]);
 
+  // Handle finish (close modal) - wrapped in useCallback to avoid dependency issues
+  const handleFinish = useCallback(() => {
+    resetReaderData(); // Reset reader data before closing
+    dispatch(resetBorrowRequestState()); // Reset borrow request state
+    onCancel();
+  }, [resetReaderData, dispatch, onCancel]);
+
   // Update librarian when userInfo is loaded
   useEffect(() => {
     if (userInfo && userInfo.schoolInfos && userInfo.schoolInfos.length > 0) {
@@ -171,6 +193,24 @@ const BorrowModal: React.FC<BorrowModalProps> = ({ visible, onCancel }) => {
       }
     }
   }, [userInfo]);
+
+  // Effect to handle borrow request success
+  useEffect(() => {
+    if (borrowRequestSuccess) {
+      message.success("Mượn sách thành công!");
+
+      // Call onSuccess callback if provided
+      if (onSuccess) {
+        onSuccess();
+      }
+
+      handleFinish(); // Close modal and reset data
+    }
+
+    if (borrowError) {
+      message.error(borrowError);
+    }
+  }, [borrowRequestSuccess, borrowError, handleFinish, onSuccess]);
 
   // Handle book selection
   const handleBookSelect = (books: BookInfo[]) => {
@@ -303,15 +343,63 @@ const BorrowModal: React.FC<BorrowModalProps> = ({ visible, onCancel }) => {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
+      render: (status) => {
+        if (status === "available") {
+          return <Tag color="green">Sẵn sàng trong kho</Tag>;
+        } else {
+          return <Tag color="red">Sách chưa lưu thông</Tag>;
+        }
+      },
     },
   ];
 
-  const handleFinish = () => {
-    // Handle form submission with state values instead of form values
-    // Here you would typically submit the form data to an API
+  // Show confirmation modal
+  const showConfirmModal = () => {
+    // Validate required fields
+    if (!selectedCardId) {
+      message.error("Vui lòng chọn độc giả");
+      return;
+    }
 
-    resetReaderData(); // Reset reader data before closing
-    onCancel();
+    if (bookData.length === 0) {
+      message.error("Vui lòng chọn ít nhất một quyển sách");
+      return;
+    }
+
+    if (!borrowDate) {
+      message.error("Vui lòng chọn ngày mượn");
+      return;
+    }
+
+    setConfirmModalVisible(true);
+  };
+
+  // Handle borrow request submission
+  const handleBorrowSubmit = () => {
+    // Get registration numbers from bookData
+    const registrationNumbers = bookData.map((book) => book.registrationNumber);
+
+    // Create borrow request payload
+    const borrowRequest = {
+      loanCode,
+      cardNumber: selectedCardId,
+      loanDate:
+        borrowDate?.format("YYYY-MM-DDTHH:mm:ss") ||
+        dayjs().format("YYYY-MM-DDTHH:mm:ss"),
+      notes: notes || "",
+      registrationNumbers,
+    };
+
+    // Dispatch action to send borrow request
+    dispatch(sendBorrowRequest(borrowRequest));
+
+    // Close confirmation modal
+    setConfirmModalVisible(false);
+  };
+
+  // Handle cancel confirmation
+  const handleCancelConfirm = () => {
+    setConfirmModalVisible(false);
   };
 
   const totalBorrowableBooks = 3 - (selectedStudent?.totalBorrowingBooks || 0);
@@ -432,7 +520,13 @@ const BorrowModal: React.FC<BorrowModalProps> = ({ visible, onCancel }) => {
                   <Input
                     placeholder="Nhập mã thẻ hoặc chọn bạn đọc"
                     value={selectedCardId}
-                    suffix={studentLoading ? <LoadingOutlined /> : <span />}
+                    prefix={<IdcardOutlined className="text-gray-400" />}
+                    suffix={
+                      <>
+                        <BsUpcScan />
+                        {studentLoading ? <LoadingOutlined /> : <span />}
+                      </>
+                    }
                     className="rounded-md"
                     allowClear={!!selectedCardId}
                     onClear={() => {
@@ -446,7 +540,7 @@ const BorrowModal: React.FC<BorrowModalProps> = ({ visible, onCancel }) => {
                     }}
                   />
                   <Button
-                    icon={<PlusOutlined />}
+                    icon={<UserAddOutlined />}
                     className="flex items-center justify-center"
                     onClick={() => setReaderModalVisible(true)}
                     type="primary"
@@ -462,6 +556,7 @@ const BorrowModal: React.FC<BorrowModalProps> = ({ visible, onCancel }) => {
                       disabled
                       value={fullName}
                       className="rounded-md bg-gray-50"
+                      prefix={<UserOutlined className="text-gray-400" />}
                     />
                   </Form.Item>
                 </div>
@@ -473,6 +568,7 @@ const BorrowModal: React.FC<BorrowModalProps> = ({ visible, onCancel }) => {
                       disabled
                       value={className}
                       className="rounded-md bg-gray-50"
+                      prefix={<TeamOutlined className="text-gray-400" />}
                     />
                   </Form.Item>
                 </div>
@@ -533,6 +629,8 @@ const BorrowModal: React.FC<BorrowModalProps> = ({ visible, onCancel }) => {
                     onChange={(e) => setRegistrationNumber(e.target.value)}
                     className="rounded-md"
                     disabled={!selectedCardId}
+                    prefix={<MdBarcodeReader />}
+                    suffix={<BsUpcScan />}
                   />
                   <Button
                     icon={<PlusOutlined />}
@@ -705,7 +803,7 @@ const BorrowModal: React.FC<BorrowModalProps> = ({ visible, onCancel }) => {
         <Space>
           <Button
             type="primary"
-            onClick={handleFinish}
+            onClick={showConfirmModal}
             className="bg-blue-600 hover:bg-blue-700 border-blue-600 px-4 h-10 flex items-center"
             icon={
               <svg
@@ -723,12 +821,13 @@ const BorrowModal: React.FC<BorrowModalProps> = ({ visible, onCancel }) => {
                 />
               </svg>
             }
+            disabled={!selectedCardId || bookData.length === 0 || !borrowDate}
           >
             Xác nhận mượn và in phiếu
           </Button>
           <Button
             type="primary"
-            onClick={handleFinish}
+            onClick={showConfirmModal}
             className="bg-green-600 hover:bg-green-700 border-green-600 px-4 h-10 flex items-center"
             icon={
               <svg
@@ -746,6 +845,8 @@ const BorrowModal: React.FC<BorrowModalProps> = ({ visible, onCancel }) => {
                 />
               </svg>
             }
+            disabled={!selectedCardId || bookData.length === 0 || !borrowDate}
+            loading={sendingBorrowRequest}
           >
             Xác nhận mượn
           </Button>
@@ -771,6 +872,32 @@ const BorrowModal: React.FC<BorrowModalProps> = ({ visible, onCancel }) => {
           return remaining;
         })()}
       />
+      {/* Confirmation Modal */}
+      <Modal
+        title="Xác nhận mượn sách"
+        open={confirmModalVisible}
+        onCancel={handleCancelConfirm}
+        footer={[
+          <Button key="cancel" onClick={handleCancelConfirm}>
+            Hủy
+          </Button>,
+          <Button
+            key="submit"
+            type="primary"
+            onClick={handleBorrowSubmit}
+            loading={sendingBorrowRequest}
+          >
+            Xác nhận
+          </Button>,
+        ]}
+      >
+        <p>
+          Bạn có chắc chắn muốn mượn {bookData.length} quyển sách cho độc giả{" "}
+          {fullName}?
+        </p>
+        <p>Ngày mượn: {borrowDate?.format("DD/MM/YYYY")}</p>
+        <p>Số phiếu mượn: {loanCode}</p>
+      </Modal>
     </Modal>
   );
 };
