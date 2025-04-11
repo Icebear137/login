@@ -4,6 +4,12 @@ import {
   fetchBookCatalogs,
   fetchBookCatalogsSuccess,
   fetchBookCatalogsFailure,
+  fetchBookTypes,
+  fetchBookTypesSuccess,
+  fetchBookTypesFailure,
+  fetchBookRegistrations,
+  fetchBookRegistrationsSuccess,
+  fetchBookRegistrationsFailure,
 } from "../slices/bookSlice";
 import { RootState } from "../store";
 import { bookService } from "@/services/bookService";
@@ -33,9 +39,7 @@ function* fetchBookCatalogsSaga(
           : undefined,
     };
 
-    console.log("Fetching book catalogs with params:", params);
     const response = yield call(bookService.getBookCatalog, params);
-    console.log("Book catalogs response:", response);
 
     // Assuming the API returns an array of book catalogs
     // If the API returns an object with items and total, adjust accordingly
@@ -53,6 +57,60 @@ function* fetchBookCatalogsSaga(
   }
 }
 
+function* fetchBookTypesSaga(): Generator<any, void, any> {
+  try {
+    const response = yield call(bookService.getBookTypes);
+
+    yield put(fetchBookTypesSuccess(response.data));
+  } catch (error) {
+    console.error("Error fetching book types:", error);
+    const errorMessage =
+      (error as Error)?.message || "Failed to fetch book types";
+    yield put(fetchBookTypesFailure(errorMessage));
+  }
+}
+
+function* fetchBookRegistrationsSaga(
+  action: PayloadAction<{ page?: number; pageSize?: number }>
+): Generator<any, void, any> {
+  try {
+    const state: RootState = yield select();
+    const { registrationFilters, registrationPagination } = state.book;
+
+    const params = {
+      skip:
+        ((registrationPagination.current || 1) - 1) *
+        (registrationPagination.pageSize || 10),
+      take: registrationPagination.pageSize || 10,
+      ...(registrationFilters.bookTypeId && {
+        bookTypeId: registrationFilters.bookTypeId,
+      }),
+      ...(registrationFilters.registrationNumbers !== "" && {
+        registrationNumbers: registrationFilters.registrationNumbers,
+      }),
+      ...(registrationFilters.searchKey !== "" && {
+        searchKey: registrationFilters.searchKey,
+      }),
+    };
+
+    const response = yield call(bookService.getBookRegistrations, params);
+
+    yield put(
+      fetchBookRegistrationsSuccess({
+        items: response.data,
+        total: response.totalCount, // Hardcoded for now, adjust when API provides total count
+      })
+    );
+  } catch (error) {
+    console.error("Error fetching book registrations:", error);
+    const errorMessage =
+      (error as Error)?.message || "Failed to fetch book registrations";
+    yield put(fetchBookRegistrationsFailure(errorMessage));
+  }
+}
+
 export function* bookSaga() {
   yield takeLatest(fetchBookCatalogs.type, fetchBookCatalogsSaga);
+  yield takeLatest(fetchBookTypes.type, fetchBookTypesSaga);
+  yield takeLatest(fetchBookRegistrations.type, fetchBookRegistrationsSaga);
 }

@@ -136,7 +136,7 @@ function* fetchSchoolClassesSaga(
 function* fetchTeacherGroupSubjectsSaga(): Generator<any, void, any> {
   try {
     const response = yield call(studentService.getTeacherGroupSubjects);
-    console.log("Teacher group subjects:", response);
+
     yield put(fetchTeacherGroupSubjectsSuccess(response.data));
   } catch (error) {
     const errorMessage =

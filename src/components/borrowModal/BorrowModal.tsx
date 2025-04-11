@@ -24,6 +24,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/redux/store";
 import { fetchStudentByCardNumber } from "@/redux/slices/studentSlice";
 import { fetchLoanCode } from "@/redux/slices/borrowSlice";
+import { fetchUserInfo } from "@/redux/slices/userSlice";
 
 interface BorrowModalProps {
   visible: boolean;
@@ -33,9 +34,11 @@ interface BorrowModalProps {
 interface BookItem {
   key: string;
   title: string;
-  isbn: string;
+  registrationNumber: string;
   author: string;
   status: string;
+  publisher?: string;
+  publishYear?: string;
 }
 
 interface BookInfo {
@@ -116,31 +119,26 @@ const BorrowModal: React.FC<BorrowModalProps> = ({ visible, onCancel }) => {
     (state: RootState) => state.borrow
   );
 
-  console.log("loanCode:", loanCode);
+  const { userInfo } = useSelector((state: RootState) => state.user);
 
   // Handle reader selection
   const handleReaderSelect = (cardNumber: string) => {
-    console.log("Selected card number:", cardNumber);
     setSelectedCardId(cardNumber);
 
     // Fetch student data by card number
     dispatch(fetchStudentByCardNumber(cardNumber));
   };
 
-  // Fetch loan code when modal is opened
+  // Fetch loan code and user info when modal is opened
   useEffect(() => {
     if (visible) {
       dispatch(fetchLoanCode());
+      dispatch(fetchUserInfo());
     } else {
       // Reset data when modal is closed
       resetReaderData();
     }
   }, [visible, dispatch, resetReaderData]);
-
-  // Log loan code when it changes
-  useEffect(() => {
-    console.log("Loan code in component:", loanCode);
-  }, [loanCode]);
 
   // Update form state when student data is loaded
   useEffect(() => {
@@ -161,10 +159,18 @@ const BorrowModal: React.FC<BorrowModalProps> = ({ visible, onCancel }) => {
           : "other"
       );
       setExpiryDate(dayjs(selectedStudent.expireDate));
-
-      console.log("Updated form state from API");
     }
   }, [selectedStudent]);
+
+  // Update librarian when userInfo is loaded
+  useEffect(() => {
+    if (userInfo && userInfo.schoolInfos && userInfo.schoolInfos.length > 0) {
+      const libraryAdminName = userInfo.schoolInfos[0].libraryAdminName;
+      if (libraryAdminName) {
+        setLibrarian(libraryAdminName);
+      }
+    }
+  }, [userInfo]);
 
   // Handle book selection
   const handleBookSelect = (books: BookInfo[]) => {
@@ -179,54 +185,74 @@ const BorrowModal: React.FC<BorrowModalProps> = ({ visible, onCancel }) => {
         newBooks.push({
           key: `book-${book.id}-${i}`,
           title: book.title,
-          isbn: book.id,
+          registrationNumber: book.registrationNumber || "",
           author: book.author || "",
           status: book.available > 0 ? "available" : "unavailable",
+          publisher: book.publisher || "",
+          publishYear: book.publishYear || "",
         });
       }
     });
 
-    console.log("Selected books with quantities:", books);
-    console.log("Generated book entries:", newBooks);
     setBookData(newBooks);
   };
 
   // Handle book deletion
   const handleDeleteBook = (key: React.Key) => {
-    console.log("Deleting book with key:", key);
+    // Get the book to be deleted
+    const bookToDelete = bookData.find((item) => item.key === key);
+    if (!bookToDelete) return;
+
+    // We don't need to extract the book id anymore as we're syncing with BookSelectionModal
+
+    // Remove the book from bookData
     setBookData(bookData.filter((item) => item.key !== key));
   };
 
   // Convert BookItem[] to BookInfo[] for BookSelectionModal
   const getSelectedBooksForModal = (): BookInfo[] => {
-    // Group books by isbn (which is the book id)
+    // Group books by registration number or by key if registration number is not available
     const bookGroups: { [key: string]: number } = {};
 
     bookData.forEach((book) => {
-      if (bookGroups[book.isbn]) {
-        bookGroups[book.isbn]++;
+      // Use registration number as key if available, otherwise use the book key
+      const groupKey = book.registrationNumber || book.key;
+
+      if (bookGroups[groupKey]) {
+        bookGroups[groupKey]++;
       } else {
-        bookGroups[book.isbn] = 1;
+        bookGroups[groupKey] = 1;
       }
     });
 
     // Convert to BookInfo[] with borrowQuantity
-    return Object.keys(bookGroups).map((isbn) => {
-      // Find a book with this isbn to get its details
-      const bookItem = bookData.find((item) => item.isbn === isbn);
+    return Object.keys(bookGroups)
+      .map((groupKey) => {
+        // Find a book with this key to get its details
+        const bookItem = bookData.find(
+          (item) =>
+            item.registrationNumber === groupKey || item.key === groupKey
+        );
 
-      return {
-        id: isbn,
-        title: bookItem?.title || "",
-        publisher: "", // We don't have this info in BookItem
-        publishYear: "", // We don't have this info in BookItem
-        available: 1, // Default value
-        total: 1, // Default value
-        author: bookItem?.author || "",
-        borrowQuantity: bookGroups[isbn],
-        selected: true,
-      };
-    });
+        if (!bookItem) return null;
+
+        // Extract the book id from the key (format: book-{id}-{index})
+        const bookId = bookItem.key.split("-")[1] || groupKey;
+
+        return {
+          id: bookId,
+          title: bookItem.title || "",
+          publisher: "", // We don't have this info in BookItem
+          publishYear: "", // We don't have this info in BookItem
+          available: 1, // Default value
+          total: 1, // Default value
+          author: bookItem.author || "",
+          registrationNumber: bookItem.registrationNumber || "",
+          borrowQuantity: bookGroups[groupKey],
+          selected: true,
+        };
+      })
+      .filter(Boolean) as BookInfo[];
   };
 
   const columns: ColumnsType<BookItem> = [
@@ -249,13 +275,24 @@ const BorrowModal: React.FC<BorrowModalProps> = ({ visible, onCancel }) => {
     },
     {
       title: "Nhan đề ấn phẩm",
-      dataIndex: "title",
       key: "title",
+      render: (_, record) => (
+        <div>
+          <div className="font-medium">{record.title}</div>
+          {(record.publisher || record.publishYear) && (
+            <div className="text-xs text-gray-500">
+              {record.publisher && `NXB: ${record.publisher}`}
+              {record.publisher && record.publishYear && " - "}
+              {record.publishYear && `Năm XB: ${record.publishYear}`}
+            </div>
+          )}
+        </div>
+      ),
     },
     {
       title: "Số ĐKCB",
-      dataIndex: "isbn",
-      key: "isbn",
+      dataIndex: "registrationNumber",
+      key: "registrationNumber",
     },
     {
       title: "Tác giả",
@@ -271,24 +308,14 @@ const BorrowModal: React.FC<BorrowModalProps> = ({ visible, onCancel }) => {
 
   const handleFinish = () => {
     // Handle form submission with state values instead of form values
-    const formData = {
-      cardId: selectedCardId,
-      fullName,
-      class: className,
-      cardStatus,
-      expiryDate: expiryDate?.format("YYYY-MM-DD"),
-      borrowId: loanCode,
-      librarian,
-      borrowDate: borrowDate?.format("YYYY-MM-DD"),
-      notes,
-      registrationNumber,
-      books: bookData,
-    };
+    // Here you would typically submit the form data to an API
 
-    console.log("Form data:", formData);
     resetReaderData(); // Reset reader data before closing
     onCancel();
   };
+
+  const totalBorrowableBooks = 3 - (selectedStudent?.totalBorrowingBooks || 0);
+  const totalBorrowableBooksOnLoan = totalBorrowableBooks - bookData.length;
 
   return (
     <Modal
@@ -332,7 +359,7 @@ const BorrowModal: React.FC<BorrowModalProps> = ({ visible, onCancel }) => {
           <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 shadow-sm transition-all hover:shadow-md">
             <div className="flex items-center justify-between">
               <div className="text-sm font-medium text-blue-700">
-                Tổng số sách đã mượn
+                Số sách còn được mượn
               </div>
               <div className="bg-blue-100 rounded-full p-2">
                 <svg
@@ -346,18 +373,14 @@ const BorrowModal: React.FC<BorrowModalProps> = ({ visible, onCancel }) => {
               </div>
             </div>
             <div className="mt-3 text-2xl font-bold text-blue-600">
-              {studentLoading ? (
-                <LoadingOutlined />
-              ) : (
-                selectedStudent?.totalBorrowedBooks || 0
-              )}
+              {studentLoading ? <LoadingOutlined /> : totalBorrowableBooks}
             </div>
           </div>
 
           <div className="bg-green-50 border border-green-100 rounded-lg p-4 shadow-sm transition-all hover:shadow-md">
             <div className="flex items-center justify-between">
               <div className="text-sm font-medium text-green-700">
-                Số sách đã trả
+                Số sách còn được mượn trên phiếu
               </div>
               <div className="bg-green-100 rounded-full p-2">
                 <svg
@@ -378,7 +401,7 @@ const BorrowModal: React.FC<BorrowModalProps> = ({ visible, onCancel }) => {
               {studentLoading ? (
                 <LoadingOutlined />
               ) : (
-                selectedStudent?.totalReturnBooks || 0
+                totalBorrowableBooksOnLoan
               )}
             </div>
           </div>
@@ -542,10 +565,15 @@ const BorrowModal: React.FC<BorrowModalProps> = ({ visible, onCancel }) => {
                 <div>
                   <Form.Item label="Cán bộ thư viện" required className="mb-3">
                     <Input
-                      placeholder="Trần Thị Thùy Diệu"
-                      value={librarian}
+                      placeholder="Đang tải thông tin..."
+                      value={
+                        librarian ||
+                        userInfo?.schoolInfos?.[0]?.libraryAdminName ||
+                        ""
+                      }
                       onChange={(e) => setLibrarian(e.target.value)}
                       className="rounded-md"
+                      disabled={true}
                       prefix={
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
@@ -737,6 +765,11 @@ const BorrowModal: React.FC<BorrowModalProps> = ({ visible, onCancel }) => {
         onCancel={() => setBookModalVisible(false)}
         onSelect={handleBookSelect}
         currentSelectedBooks={getSelectedBooksForModal()}
+        remainingBooksAllowed={(() => {
+          const remaining = totalBorrowableBooks;
+
+          return remaining;
+        })()}
       />
     </Modal>
   );

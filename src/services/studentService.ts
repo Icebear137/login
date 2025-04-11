@@ -54,7 +54,7 @@ export const studentService = {
       const response = await apiClient.get(
         "master-data/teacher-group-subject/list"
       );
-      console.log("API response for teacher group subjects:", response.data);
+
       // Ensure we return an array
       const data = response.data.data || [];
       return data;

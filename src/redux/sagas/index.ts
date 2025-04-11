@@ -4,6 +4,7 @@ import { schoolSaga } from "./schoolSaga";
 import { borrowSaga } from "./borrowSaga";
 import { studentSaga } from "./studentSaga";
 import { bookSaga } from "./bookSaga";
+import { userSaga } from "./userSaga";
 
 export default function* rootSaga() {
   yield all([
@@ -12,6 +13,7 @@ export default function* rootSaga() {
     borrowSaga(),
     studentSaga(),
     bookSaga(),
+    userSaga(),
     // Thêm các saga khác ở đây trong tương lai nếu cần
   ]);
 }

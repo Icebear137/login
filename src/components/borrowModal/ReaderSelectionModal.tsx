@@ -103,14 +103,8 @@ const ReaderSelectionModal: React.FC<ReaderSelectionModalProps> = ({
       dispatch(fetchStudents({ page: 1, pageSize: pagination.pageSize }));
       dispatch(fetchGradeCodes());
       dispatch(fetchTeacherGroupSubjects());
-      console.log("Fetching teacher group subjects...");
     }
   }, [visible, dispatch, pagination.pageSize]);
-
-  // Log teacher group subjects when they change
-  useEffect(() => {
-    console.log("Teacher group subjects in component:", teacherGroupSubjects);
-  }, [teacherGroupSubjects]);
 
   // Apply filters when they change
   useEffect(() => {

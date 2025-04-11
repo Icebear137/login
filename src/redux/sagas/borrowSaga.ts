@@ -149,12 +149,11 @@ function* fetchLoanCodeSaga() {
   try {
     // @ts-expect-error API call in saga
     const response = yield call(borrowService.getLoanCode);
-    console.log("Loan code response:", response.data);
 
     // Trả về data từ response
     // API trả về { code, data, message } và chúng ta chỉ cần data
     const loanCode = response.data;
-    console.log("Extracted loan code:", loanCode);
+
     yield put(fetchLoanCodeSuccess(loanCode));
   } catch (error) {
     console.error("Error fetching loan code:", error);

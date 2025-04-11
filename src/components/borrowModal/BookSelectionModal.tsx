@@ -1,18 +1,36 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Modal, Input, Table, Button, Checkbox, Spin } from "antd";
+import {
+  Modal,
+  Input,
+  Table,
+  Button,
+  Checkbox,
+  Spin,
+  Select,
+  message,
+} from "antd";
 import { SearchOutlined, LoadingOutlined } from "@ant-design/icons";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/redux/store";
-import { fetchBookCatalogs, updateBookFilters } from "@/redux/slices/bookSlice";
+import {
+  fetchBookCatalogs,
+  fetchBookTypes,
+  fetchBookRegistrations,
+  updateBookFilters,
+  updateRegistrationFilters,
+} from "@/redux/slices/bookSlice";
+import { BookRegistration } from "@/types/schema";
 import type { ColumnsType } from "antd/es/table";
+import { toast } from "react-toastify";
 
 interface BookSelectionModalProps {
   visible: boolean;
   onCancel: () => void;
   onSelect: (books: BookInfo[]) => void;
   currentSelectedBooks?: BookInfo[];
+  remainingBooksAllowed?: number;
 }
 
 interface BookInfo {
@@ -28,33 +46,68 @@ interface BookInfo {
   borrowQuantity?: number;
 }
 
-// Removed unused Option declaration
+const { Option } = Select;
 
 const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
   visible,
   onCancel,
   onSelect,
   currentSelectedBooks = [],
+  remainingBooksAllowed = 3, // Default to 3 if not provided
 }) => {
   const [searchText, setSearchText] = useState("");
+  const [registrationNumber, setRegistrationNumber] = useState("");
+  const [bookTypeId, setBookTypeId] = useState<number | undefined>(undefined);
   const [selectedBooks, setSelectedBooks] = useState<BookInfo[]>([]);
+  const [viewMode, setViewMode] = useState<"title" | "registration">("title");
 
-  // Update selectedBooks when currentSelectedBooks changes or modal becomes visible
+  // Update selectedBooks when currentSelectedBooks changes
   useEffect(() => {
-    if (visible && currentSelectedBooks.length > 0) {
-      setSelectedBooks(currentSelectedBooks);
+    // Always sync with currentSelectedBooks, even when modal is not visible
+    // This ensures that when books are deleted in BorrowModal, they are also unselected here
+    setSelectedBooks(currentSelectedBooks);
+  }, [currentSelectedBooks]);
+
+  // Create a custom handler for modal cancel to reset borrowQuantity
+  const handleModalCancel = () => {
+    // Reset borrowQuantity to 1 for all books
+    if (selectedBooks.length > 0) {
+      const resetBooks = selectedBooks.map((book) => ({
+        ...book,
+        borrowQuantity: 1,
+      }));
+      setSelectedBooks(resetBooks);
     }
-  }, [visible, currentSelectedBooks]);
+
+    // Call the original onCancel
+    onCancel();
+  };
 
   const dispatch = useDispatch();
-  const { bookCatalogs, loading, pagination } = useSelector(
-    (state: RootState) => state.book
-  );
+  const {
+    bookCatalogs,
+    bookTypes,
+    bookRegistrations,
+    loading,
+    loadingBookTypes,
+    loadingBookRegistrations,
+    pagination,
+    registrationPagination,
+  } = useSelector((state: RootState) => state.book);
 
-  // Fetch book catalogs when component mounts
+  // Fetch book types when component mounts (only once)
   useEffect(() => {
-    dispatch(fetchBookCatalogs({ page: 1, pageSize: 10 }));
+    dispatch(fetchBookTypes());
   }, [dispatch]);
+
+  // Fetch initial data based on view mode
+  useEffect(() => {
+    if (viewMode === "title") {
+      dispatch(fetchBookCatalogs({ page: 1, pageSize: 10 }));
+    } else {
+      dispatch(fetchBookRegistrations({ page: 1, pageSize: 10 }));
+    }
+  }, [dispatch, viewMode]);
 
   // Convert API data to BookInfo format
   const books: BookInfo[] = bookCatalogs?.map((catalog) => ({
@@ -71,10 +124,62 @@ const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
         : "",
   }));
 
-  const handleSearch = (value: string) => {
+  // Reset all filters and search inputs
+  const resetFilters = () => {
+    setSearchText("");
+    setRegistrationNumber("");
+    setBookTypeId(undefined);
+
+    // Reset Redux filters
+    dispatch(
+      updateBookFilters({
+        searchKey: "",
+        bookTypeId: null,
+      })
+    );
+    dispatch(
+      updateRegistrationFilters({
+        searchKey: "",
+        registrationNumbers: "",
+        bookTypeId: undefined,
+      })
+    );
+  };
+
+  // Handle view mode change
+  const handleViewModeChange = (value: string) => {
+    if (value === "registration") {
+      setViewMode("registration");
+      resetFilters();
+      dispatch(fetchBookRegistrations({ page: 1, pageSize: 10 }));
+    } else {
+      setViewMode("title");
+      resetFilters();
+      dispatch(fetchBookCatalogs({ page: 1, pageSize: 10 }));
+    }
+  };
+
+  const handleSearchTitle = (value: string) => {
     setSearchText(value);
-    dispatch(updateBookFilters({ searchKey: value }));
-    dispatch(fetchBookCatalogs({ page: 1 }));
+    if (viewMode === "title") {
+      dispatch(updateBookFilters({ searchKey: value }));
+      dispatch(fetchBookCatalogs({ page: 1 }));
+    } else {
+      dispatch(
+        updateRegistrationFilters({
+          searchKey: value,
+        })
+      );
+      dispatch(fetchBookRegistrations({ page: 1 }));
+    }
+  };
+
+  const handleSearchRegistrationNumber = (value: string) => {
+    setRegistrationNumber(value);
+    if (viewMode === "registration") {
+      dispatch(updateRegistrationFilters({ registrationNumbers: value }));
+      dispatch(fetchBookRegistrations({ page: 1 }));
+    }
   };
 
   const handleSelectBook = (book: BookInfo) => {
@@ -83,17 +188,73 @@ const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
     if (isSelected) {
       setSelectedBooks(selectedBooks.filter((b) => b.id !== book.id));
     } else {
+      // Check if adding this book would exceed the remaining allowed books
+      const totalSelectedBooks = selectedBooks.reduce(
+        (total, book) => total + (book.borrowQuantity || 1),
+        0
+      );
+
+      // If adding one more book would exceed the limit
+      if (totalSelectedBooks + 1 > remainingBooksAllowed) {
+        toast.error(
+          `Bạn chỉ có thể mượn tối đa ${remainingBooksAllowed} quyển sách (bao gồm cả sách đang mượn)!`
+        );
+        return;
+      }
+
       // When selecting a book, initialize borrowQuantity to 1
-      setSelectedBooks([...selectedBooks, { ...book, borrowQuantity: 1 }]);
+      // Make sure to include all necessary fields based on the view mode
+      const bookWithQuantity = {
+        ...book,
+        borrowQuantity: 1,
+        // Ensure these fields are included for both view modes
+        registrationNumber: book.registrationNumber || "",
+        publisher: book.publisher || "",
+        publishYear: book.publishYear || "",
+      };
+      setSelectedBooks([...selectedBooks, bookWithQuantity]);
     }
   };
 
   const handleQuantityChange = (bookId: string, quantity: number) => {
-    // Ensure quantity is valid
-    const book = books.find((b) => b.id === bookId);
+    // Find the book in the appropriate data source based on view mode
+    let book;
+    if (viewMode === "title") {
+      book = books.find((b) => b.id === bookId);
+    } else {
+      book = bookRegistrations.find((b) => b.id.toString() === bookId);
+    }
+
     if (!book) return;
 
-    const validQuantity = Math.max(1, Math.min(quantity, book.available));
+    // Ensure quantity is valid (minimum 1, maximum available)
+    let available = 1;
+
+    if (viewMode === "title" && "available" in book) {
+      available = (book as BookInfo).available || 1;
+    } else if (viewMode === "registration") {
+      // For registration view, check bookStatusId (1 means available)
+      const bookReg = book as BookRegistration;
+      available = bookReg.bookStatusId === 1 ? 1 : 0;
+    }
+
+    // Calculate the total quantity of all selected books except the current one
+    const totalOtherBooks = selectedBooks.reduce(
+      (total, b) => total + (b.id !== bookId ? b.borrowQuantity || 1 : 0),
+      0
+    );
+
+    // Check if the new quantity would exceed the remaining allowed books
+    if (totalOtherBooks + quantity > remainingBooksAllowed) {
+      toast.error(
+        `Bạn chỉ có thể mượn tối đa ${remainingBooksAllowed} quyển sách (bao gồm cả sách đang mượn)!`
+      );
+      // Use the maximum allowed quantity instead
+      quantity = remainingBooksAllowed - totalOtherBooks;
+    }
+
+    // Ensure quantity is valid (minimum 1, maximum available and allowed)
+    const validQuantity = Math.max(1, Math.min(quantity, available));
 
     // Update the selected books with the new quantity
     setSelectedBooks(
@@ -103,12 +264,55 @@ const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
     );
   };
 
-  const handleConfirm = () => {
-    onSelect(selectedBooks);
-    onCancel();
+  const handleBookTypeChange = (value: string) => {
+    const newBookTypeId = value === "all" ? undefined : Number(value);
+    setBookTypeId(newBookTypeId);
+
+    // Update filters based on current view mode
+    if (viewMode === "title") {
+      dispatch(updateBookFilters({ bookTypeId: newBookTypeId }));
+      dispatch(fetchBookCatalogs({ page: 1 }));
+    } else {
+      dispatch(updateRegistrationFilters({ bookTypeId: newBookTypeId }));
+      dispatch(fetchBookRegistrations({ page: 1 }));
+    }
   };
 
-  const columns: ColumnsType<BookInfo> = [
+  const handleConfirm = () => {
+    if (selectedBooks.length === 0) {
+      // No books selected, just close the modal
+      onCancel();
+      return;
+    }
+
+    // Calculate total quantity of selected books
+    let totalSelectedQuantity = 0;
+    for (const book of selectedBooks) {
+      totalSelectedQuantity += book.borrowQuantity || 1;
+    }
+
+    console.log("Total selected quantity:", totalSelectedQuantity);
+    console.log("Remaining books allowed:", remainingBooksAllowed);
+    console.log("Selected books:", selectedBooks);
+
+    // Check if total quantity exceeds the remaining allowed books
+    if (totalSelectedQuantity > remainingBooksAllowed) {
+      console.log("Showing error message");
+      // Use message.error for error notification
+      message.error(
+        `Bạn chỉ có thể mượn tối đa ${remainingBooksAllowed} quyển sách (bao gồm cả sách đang mượn)!`,
+        5
+      );
+      return; // Don't update the table in BorrowModal
+    }
+
+    // If quantity is valid, update the table in BorrowModal
+    onSelect(selectedBooks);
+    handleModalCancel();
+  };
+
+  // Define table columns for title view
+  const titleColumns: ColumnsType<BookInfo> = [
     {
       title: "STT",
       key: "index",
@@ -194,6 +398,83 @@ const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
     },
   ];
 
+  // Define interface for mapped registration data
+  interface MappedRegistration {
+    id: string;
+    registrationNumber: string;
+    title: string;
+    publisher: string;
+    publishYear: string;
+    author: string;
+    available: number;
+    total: number;
+  }
+
+  // Define table columns for registration number view
+  const registrationColumns: ColumnsType<MappedRegistration> = [
+    {
+      title: "STT",
+      key: "index",
+      width: 60,
+      align: "center",
+      render: (_, __, index) => index + 1,
+    },
+    {
+      title: "",
+      key: "select",
+      width: 60,
+      align: "center",
+      render: (_, record) => (
+        <Checkbox
+          checked={selectedBooks.some((b) => b.id === record.id)}
+          onChange={() => handleSelectBook(record)}
+          disabled={record.available <= 0}
+        />
+      ),
+    },
+    {
+      title: "Số ĐKCB",
+      dataIndex: "registrationNumber",
+      key: "registrationNumber",
+      width: 150,
+    },
+    {
+      title: "Tiêu đề",
+      key: "title",
+      render: (_, record) => (
+        <div>
+          <div>{record.title}</div>
+          <div className="text-xs text-gray-500">
+            NXB: {record.publisher} - Năm XB: {record.publishYear}
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: "Tác giả",
+      dataIndex: "author",
+      key: "author",
+      width: 150,
+    },
+    {
+      title: "Tình trạng sách",
+      key: "status",
+      width: 150,
+      render: (_, record) => (
+        <div>
+          {record.available > 0 ? (
+            <span className="text-green-600">Sách đang lưu thông</span>
+          ) : (
+            <span className="text-red-600">Sách chưa lưu thông</span>
+          )}
+        </div>
+      ),
+    },
+  ];
+
+  // We'll use separate columns for each view mode directly in the render function
+  // This avoids TypeScript errors with different column structures
+
   // No need for local filtering as we're using API filtering
 
   return (
@@ -204,19 +485,67 @@ const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
         </span>
       }
       open={visible}
-      onCancel={onCancel}
+      onCancel={handleModalCancel}
       width={1000}
       footer={null}
     >
-      <div className="flex justify-between mb-4">
+      <div className="mb-4 space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Xem theo
+            </label>
+            <Select
+              value={viewMode === "title" ? "subject" : "registration"}
+              style={{ width: "100%" }}
+              className="rounded-md"
+              onChange={handleViewModeChange}
+            >
+              <Option value="subject">Nhãn đề</Option>
+              <Option value="registration">Số đăng ký cá biệt</Option>
+            </Select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Kho sách
+            </label>
+            <Select
+              style={{ width: "100%" }}
+              className="rounded-md"
+              loading={loadingBookTypes}
+              onChange={handleBookTypeChange}
+              value={bookTypeId ? bookTypeId.toString() : "all"}
+            >
+              <Option value="all">-- Tất cả --</Option>
+              {bookTypes?.map((type) => (
+                <Option key={type.id} value={type.id.toString()}>
+                  {type.name}
+                </Option>
+              ))}
+            </Select>
+          </div>
+        </div>
+
         <div className="flex gap-2 w-full">
           <Input
             placeholder="Tìm kiếm sách..."
             value={searchText}
-            onChange={(e) => handleSearch(e.target.value)}
+            onChange={(e) => handleSearchTitle(e.target.value)}
             suffix={loading ? <LoadingOutlined /> : <SearchOutlined />}
-            className="w-full"
+            className="w-full rounded-md"
+            allowClear
           />
+          {viewMode === "registration" && (
+            <Input
+              placeholder="Nhập số đăng ký cá biệt..."
+              value={registrationNumber}
+              onChange={(e) => handleSearchRegistrationNumber(e.target.value)}
+              suffix={loading ? <LoadingOutlined /> : <SearchOutlined />}
+              className="w-full rounded-md"
+              allowClear
+            />
+          )}
         </div>
       </div>
 
@@ -225,9 +554,9 @@ const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
           <Spin size="large" />
           <div className="mt-2 text-gray-500">Đang tải dữ liệu...</div>
         </div>
-      ) : (
+      ) : viewMode === "title" ? (
         <Table
-          columns={columns}
+          columns={titleColumns}
           dataSource={books}
           rowKey="id"
           pagination={{
@@ -241,10 +570,38 @@ const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
           size="middle"
           loading={loading}
         />
+      ) : (
+        <Table
+          columns={registrationColumns}
+          dataSource={bookRegistrations.map((registration) => ({
+            id: registration.id.toString(),
+            registrationNumber: registration.registrationNumber,
+            title: registration.title,
+            publisher: registration.schoolPublishingCompanyName,
+            publishYear: registration.publishYear?.toString() || "",
+            author: registration.authors,
+            available: registration.bookStatusId === 1 ? 1 : 0, // Assuming bookStatusId 1 means available
+            total: 1,
+          }))}
+          rowKey="id"
+          pagination={{
+            current: registrationPagination.current,
+            pageSize: registrationPagination.pageSize,
+            total: registrationPagination.total,
+            showSizeChanger: true,
+            pageSizeOptions: ["10", "20", "50"],
+            onChange: (page, pageSize) => {
+              dispatch(fetchBookRegistrations({ page, pageSize }));
+            },
+          }}
+          size="middle"
+          bordered
+          loading={loadingBookRegistrations}
+        />
       )}
 
       <div className="flex justify-end mt-4">
-        <Button onClick={onCancel} className="mr-2">
+        <Button onClick={handleModalCancel} className="mr-2">
           Hủy
         </Button>
         <Button type="primary" onClick={handleConfirm} className="">

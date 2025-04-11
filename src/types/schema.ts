@@ -502,11 +502,134 @@ export interface BookCatalogParams {
   take?: number;
 }
 
+export interface BookType {
+  id: number;
+  createdBy: number;
+  updatedBy: number;
+  createdAt: string;
+  updatedAt: string;
+  code: string;
+  name: string;
+  parentId: number;
+  status: number;
+  order: number;
+  isSystem: number;
+  parentName: string;
+  rootCode: string;
+  groupUnitCode: string;
+  schoolCode: string;
+  doetCode: string;
+  divisionCode: string;
+}
+
+export interface BookRegistrationParams {
+  searchKey?: string;
+  skip?: number;
+  take?: number;
+  bookTypeId?: number;
+  bookConditionId?: number | null;
+  bookStatusId?: number;
+  documentNumber?: string;
+  registrationEntryDate?: string;
+  registrationDate?: string;
+  registrationEntryFrom?: string;
+  registrationEntryTo?: string;
+  registrationFrom?: string;
+  registrationTo?: string;
+  documentDate?: string;
+  registrationNumberFrom?: number;
+  registrationNumberTo?: number;
+  registrationNumber?: string;
+  registrationNumbers?: string;
+  bookCatalogIds?: number[];
+  bookDocumentEntryId?: number;
+  isLost?: boolean;
+  sortBy?: string;
+  sortDirection?: boolean;
+  schoolCategoryId?: number;
+}
+
+export interface BookRegistration {
+  id: number;
+  createdBy: number;
+  updatedBy: number;
+  createdAt: string;
+  updatedAt: string;
+  bookCatalogId: number;
+  bookDocumentEntryId: number;
+  registrationNumber: string;
+  registrationDate: string;
+  registrationEntryDate: string;
+  bookConditionId: number;
+  bookStatusId: number;
+  numberOfBorrow: number;
+  notes: string;
+  managementCode: string;
+  pricingCode: string;
+  textbookRegistrationNumber: string;
+  textbookPrefix: string;
+  maxRegistrationNumber: number;
+  bookTypeId: number;
+  bookTypeCode: string;
+  bookTypeName: string;
+  title: string;
+  thumbsUrl: string;
+  parallelTitle: string;
+  shortTitle: string;
+  authors: string;
+  otherAuthors: string;
+  languageId: number;
+  languageCode: string;
+  languageName: string;
+  schoolPublishingCompanyId: number;
+  schoolPublishingCompanyCode: string;
+  schoolPublishingCompanyName: string;
+  publishYear: number;
+  publishingLocationName: string;
+  editionNumber: number;
+  numberOfPages: number;
+  coverPrice: number;
+  referencePrice: number;
+  bookSize: string;
+  isbn: string;
+  schoolBookCategoryId: number;
+  schoolBookCategoryCode: string;
+  schoolBookCategoryName: string;
+  schoolPublicationTypeId: number;
+  schoolPublicationTypeCode: string;
+  schoolPublicationTypeName: string;
+  authorSymbol: string;
+  titleSymbol: string;
+  collectionSeries: string;
+  annotation: string;
+  schoolCategoryId: number;
+  schoolCategoryCode: string;
+  schoolCategoryName: string;
+  compiler: string;
+  chiefEditor: string;
+  translator: string;
+  proofreader: string;
+  isNew: number;
+  documentNumber: string;
+  financialContractNumber: string;
+  documentDate: string;
+  supplierName: string;
+}
+
 export interface BookState {
   bookCatalogs: BookCatalog[];
+  bookTypes: BookType[];
+  bookRegistrations: BookRegistration[];
+  loadingBookTypes: boolean;
+  loadingBookRegistrations: boolean;
   loading: boolean;
   error: string | null;
   pagination: {
+    current: number;
+    pageSize: number;
+    total: number;
+  };
+  registrationPagination: {
     current: number;
     pageSize: number;
     total: number;
@@ -516,13 +639,13 @@ export interface BookState {
     schoolPublishingCompanyId?: number | null;
     languageId?: number | null;
     bookTypeId?: number | null;
-    myBookTypeId?: number | null;
     schoolBookCategoryId?: number | null;
     schoolCategoryId?: number | null;
     fromDate?: string | null;
     toDate?: string | null;
     isGetBookAvailable?: boolean | null;
   };
+  registrationFilters: BookRegistrationParams;
 }
 
 export interface StudentState {

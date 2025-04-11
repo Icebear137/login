@@ -18,6 +18,7 @@ import schoolReducer from "./slices/schoolSlice";
 import borrowReducer from "./slices/borrowSlice";
 import studentReducer from "./slices/studentSlice";
 import bookReducer from "./slices/bookSlice";
+import userReducer from "./slices/userSlice";
 import rootSaga from "./sagas";
 
 // Kiểm tra xem có đang ở môi trường client không để tránh lỗi khi chạy trên server
@@ -35,6 +36,7 @@ const rootReducer = combineReducers({
   borrow: borrowReducer,
   student: studentReducer,
   book: bookReducer,
+  user: userReducer,
 });
 
 // Chỉ sử dụng persist khi ở môi trường client
