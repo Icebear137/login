@@ -492,7 +492,7 @@ const ReaderSelectionModal: React.FC<ReaderSelectionModalProps> = ({
                 : "bg-gray-50 hover:bg-blue-50"
             }
             className="border-collapse"
-            scroll={{ x: true, y: 500 }}
+            scroll={{ x: 900, y: 500 }}
             bordered
           />
         ) : (

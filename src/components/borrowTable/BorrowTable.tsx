@@ -696,7 +696,7 @@ const BorrowTable = () => {
           }}
           onChange={handleTableChange}
           loading={loading}
-          scroll={{ x: 1500, y: 500 }}
+          scroll={{ x: 1000, y: 500 }}
           size="middle"
           bordered
           rowClassName={(_, index) =>
@@ -733,7 +733,7 @@ const BorrowTable = () => {
           }}
           onChange={handleTableChange}
           loading={loading}
-          scroll={{ x: 1500, y: 1000 }}
+          scroll={{ x: 1000, y: 500 }}
           size="middle"
           bordered
           rowClassName={(_, index) =>

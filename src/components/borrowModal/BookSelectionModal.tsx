@@ -684,7 +684,7 @@ const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
               dispatch(fetchBookCatalogs({ page, pageSize }));
             },
           }}
-          scroll={{ x: 1500, y: 500 }}
+          scroll={{ x: 900, y: 500 }}
           size="middle"
           loading={loading}
           bordered
@@ -719,7 +719,7 @@ const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
               dispatch(fetchBookRegistrations({ page, pageSize }));
             },
           }}
-          scroll={{ x: 1500, y: 500 }}
+          scroll={{ x: 900, y: 500 }}
           size="middle"
           bordered
           loading={loadingBookRegistrations}

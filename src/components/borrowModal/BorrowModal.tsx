@@ -227,6 +227,23 @@ const BorrowModal: React.FC<BorrowModalProps> = ({
   useEffect(() => {
     // Chỉ xử lý khi có sự thay đổi về bookByRegistrationNumber hoặc bookError
     if (bookByRegistrationNumber) {
+      // Kiểm tra số lượng sách được mượn trước khi thêm sách mới
+      const maxBorrowableBooks = 3;
+      const currentBorrowedBooks = selectedStudent?.totalBorrowingBooks || 0;
+      const remainingBooks =
+        maxBorrowableBooks - currentBorrowedBooks - bookData.length;
+
+      if (remainingBooks <= 0) {
+        messageApi.error(
+          `Bạn đọc đã mượn đủ ${maxBorrowableBooks} quyển sách, không thể mượn thêm`
+        );
+        // Xóa dữ liệu sách đã tìm kiếm để chuẩn bị cho lần tìm kiếm tiếp theo
+        dispatch(clearBookByRegistrationNumber());
+        // Xóa giá trị trong ô input
+        setRegistrationNumber("");
+        return;
+      }
+
       // Kiểm tra trạng thái sách (bookStatusId = 1 là có thể mượn)
       if (bookByRegistrationNumber.bookStatusId === 1) {
         // Chuyển đổi dữ liệu sang định dạng BookItem
@@ -284,6 +301,7 @@ const BorrowModal: React.FC<BorrowModalProps> = ({
     registrationNumber,
     messageApi,
     dispatch,
+    selectedStudent,
   ]);
 
   // Handle book selection
@@ -474,9 +492,6 @@ const BorrowModal: React.FC<BorrowModalProps> = ({
     setConfirmModalVisible(false);
   };
 
-  const totalBorrowableBooks = 3 - (selectedStudent?.totalBorrowingBooks || 0);
-  const totalBorrowableBooksOnLoan = totalBorrowableBooks - bookData.length;
-
   return (
     <Modal
       title="Lập phiếu mượn sách"
@@ -539,7 +554,11 @@ const BorrowModal: React.FC<BorrowModalProps> = ({
               </div>
             </div>
             <div className="mt-3 text-2xl font-bold text-blue-600">
-              {studentLoading ? <LoadingOutlined /> : totalBorrowableBooks}
+              {studentLoading ? (
+                <LoadingOutlined />
+              ) : (
+                3 - (selectedStudent?.totalBorrowingBooks || 0)
+              )}
             </div>
           </div>
 
@@ -567,7 +586,9 @@ const BorrowModal: React.FC<BorrowModalProps> = ({
               {studentLoading ? (
                 <LoadingOutlined />
               ) : (
-                totalBorrowableBooksOnLoan
+                3 -
+                (selectedStudent?.totalBorrowingBooks || 0) -
+                bookData.length
               )}
             </div>
           </div>
@@ -707,6 +728,23 @@ const BorrowModal: React.FC<BorrowModalProps> = ({
                     onChange={(e) => setRegistrationNumber(e.target.value)}
                     onPressEnter={() => {
                       if (registrationNumber && selectedCardId) {
+                        // Kiểm tra số lượng sách được mượn
+                        const maxBorrowableBooks = 3;
+                        const currentBorrowedBooks =
+                          selectedStudent?.totalBorrowingBooks || 0;
+                        const remainingBooks =
+                          maxBorrowableBooks -
+                          currentBorrowedBooks -
+                          bookData.length;
+
+                        if (remainingBooks <= 0) {
+                          messageApi.error(
+                            `Bạn đọc đã mượn đủ ${maxBorrowableBooks} quyển sách, không thể mượn thêm`
+                          );
+                          setRegistrationNumber("");
+                          return;
+                        }
+
                         // Xóa lỗi trước khi tìm kiếm mới
                         dispatch(clearBookByRegistrationNumber());
                         // Gọi API tìm kiếm sách
@@ -964,11 +1002,9 @@ const BorrowModal: React.FC<BorrowModalProps> = ({
         onCancel={() => setBookModalVisible(false)}
         onSelect={handleBookSelect}
         currentSelectedBooks={getSelectedBooksForModal()}
-        remainingBooksAllowed={(() => {
-          const remaining = totalBorrowableBooks;
-
-          return remaining;
-        })()}
+        remainingBooksAllowed={
+          3 - (selectedStudent?.totalBorrowingBooks || 0) - bookData.length
+        }
       />
       {/* Confirmation Modal */}
       <Modal
