@@ -692,10 +692,11 @@ const BorrowTable = () => {
             ...(Array.isArray(records) && {
               total: Math.max(pagination.total, records.length),
             }),
+            pageSizeOptions: [50, 100, 150, 200],
           }}
           onChange={handleTableChange}
           loading={loading}
-          scroll={{ x: true }}
+          scroll={{ x: 1500, y: 500 }}
           size="middle"
           bordered
           rowClassName={(_, index) =>
@@ -728,10 +729,11 @@ const BorrowTable = () => {
             ...(Array.isArray(records) && {
               total: Math.max(pagination.total, records.length),
             }),
+            pageSizeOptions: [50, 100, 150, 200],
           }}
           onChange={handleTableChange}
           loading={loading}
-          scroll={{ x: true }}
+          scroll={{ x: 1500, y: 1000 }}
           size="middle"
           bordered
           rowClassName={(_, index) =>

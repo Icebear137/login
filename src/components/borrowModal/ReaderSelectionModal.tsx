@@ -91,8 +91,6 @@ const ReaderSelectionModal: React.FC<ReaderSelectionModalProps> = ({
   const [cardNumber, setCardNumber] = useState("");
   const [cardTypeFilter, setCardTypeFilter] = useState<number | null>(null);
   const [cardStatusFilter, setCardStatusFilter] = useState<number | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [expiryFilter, setExpiryFilter] = useState<string | null>(null);
   const [selectedGradeCode, setSelectedGradeCode] = useState<string | null>(
     null
   );
@@ -159,7 +157,6 @@ const ReaderSelectionModal: React.FC<ReaderSelectionModalProps> = ({
   };
 
   const handleExpiryChange = (value: string) => {
-    setExpiryFilter(value);
     if (value === "valid") {
       dispatch(updateFilters({ isNotExpired: 1 }));
     } else if (value === "expired") {
@@ -171,14 +168,13 @@ const ReaderSelectionModal: React.FC<ReaderSelectionModalProps> = ({
     dispatch(fetchStudents({ page: 1 }));
   };
 
-  const handlePageChange = (page: number) => {
-    dispatch(updatePagination({ current: page }));
-    dispatch(fetchStudents({ page }));
-  };
-
-  const handlePageSizeChange = (pageSize: number) => {
-    dispatch(updatePagination({ pageSize, current: 1 }));
-    dispatch(fetchStudents({ page: 1, pageSize }));
+  const handleTableChange = (newPagination: {
+    current?: number;
+    pageSize?: number;
+  }) => {
+    const { current = 1, pageSize = pagination.pageSize } = newPagination;
+    dispatch(updatePagination({ current, pageSize }));
+    dispatch(fetchStudents({ page: current, pageSize }));
   };
 
   const handleSelect = (record: ReaderInfo) => {
@@ -197,7 +193,8 @@ const ReaderSelectionModal: React.FC<ReaderSelectionModalProps> = ({
       title: "STT",
       key: "index",
       width: 60,
-      render: (_, __, index) => index + 1,
+      render: (_, __, index) =>
+        (pagination.current - 1) * pagination.pageSize + index + 1,
       className: "",
     },
     {
@@ -470,7 +467,17 @@ const ReaderSelectionModal: React.FC<ReaderSelectionModalProps> = ({
             columns={columns}
             dataSource={readers}
             rowKey={(record) => `reader-selection-${record.cardId}`}
-            pagination={false}
+            pagination={{
+              current: pagination.current,
+              pageSize: pagination.pageSize,
+              total: pagination.total,
+              showSizeChanger: true,
+              pageSizeOptions: ["50", "100", "150", "200"],
+              showTotal: (total) => `Tổng cộng: ${total} bạn đọc`,
+              onChange: (page, pageSize) => {
+                handleTableChange({ current: page, pageSize });
+              },
+            }}
             size="middle"
             rowClassName={(_, index) =>
               index % 2 === 0
@@ -478,6 +485,8 @@ const ReaderSelectionModal: React.FC<ReaderSelectionModalProps> = ({
                 : "bg-gray-50 hover:bg-blue-50"
             }
             className="border-collapse"
+            scroll={{ x: true, y: 500 }}
+            bordered
           />
         ) : (
           <div className="text-center py-12 bg-gray-50 text-gray-500 flex flex-col items-center justify-center">
@@ -488,63 +497,6 @@ const ReaderSelectionModal: React.FC<ReaderSelectionModalProps> = ({
             </div>
           </div>
         )}
-      </div>
-
-      <div className="flex flex-col md:flex-row justify-between items-center text-sm bg-gray-50 p-3 rounded-lg">
-        <div className="flex items-center gap-2 mb-3 md:mb-0">
-          <div className="flex items-center border border-gray-300 rounded overflow-hidden">
-            <Button
-              size="small"
-              className="flex items-center justify-center px-3 py-1 h-8 border-0 rounded-none hover:bg-blue-50"
-              disabled={pagination.current <= 1}
-              onClick={() => handlePageChange(pagination.current - 1)}
-            >
-              «
-            </Button>
-            <div className="px-3 py-1 bg-white border-x border-gray-300 min-w-[40px] text-center">
-              {pagination.current}
-            </div>
-            <Button
-              size="small"
-              className="flex items-center justify-center px-3 py-1 h-8 border-0 rounded-none hover:bg-blue-50"
-              disabled={
-                pagination.current >=
-                Math.ceil(pagination.total / pagination.pageSize)
-              }
-              onClick={() => handlePageChange(pagination.current + 1)}
-            >
-              »
-            </Button>
-          </div>
-          <span className="text-gray-600">
-            Trang {pagination.current} /{" "}
-            {Math.max(1, Math.ceil(pagination.total / pagination.pageSize))}
-          </span>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <span className="text-gray-600">Hiển thị</span>
-          <Select
-            defaultValue={pagination.pageSize.toString()}
-            size="small"
-            style={{ width: 70 }}
-            className="text-sm"
-            onChange={(value) => handlePageSizeChange(Number(value))}
-            popupMatchSelectWidth={false}
-          >
-            <Option value="10">10</Option>
-            <Option value="20">20</Option>
-            <Option value="50">50</Option>
-            <Option value="100">100</Option>
-          </Select>
-          <span className="text-gray-600 mr-4">mục / trang</span>
-
-          <div className="bg-blue-50 px-3 py-1 rounded border border-blue-100">
-            <span className="text-blue-700 font-medium">
-              Tổng cộng: {pagination.total} bạn đọc
-            </span>
-          </div>
-        </div>
       </div>
     </Modal>
   );

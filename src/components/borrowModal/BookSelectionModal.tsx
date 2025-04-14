@@ -96,9 +96,9 @@ const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
   // Fetch initial data based on view mode
   useEffect(() => {
     if (viewMode === "title") {
-      dispatch(fetchBookCatalogs({ page: 1, pageSize: 10 }));
+      dispatch(fetchBookCatalogs({ page: 1, pageSize: 50 })); // Changed from 10 to 50
     } else {
-      dispatch(fetchBookRegistrations({ page: 1, pageSize: 10 }));
+      dispatch(fetchBookRegistrations({ page: 1, pageSize: 50 })); // Changed from 10 to 50
     }
   }, [dispatch, viewMode]);
 
@@ -670,10 +670,14 @@ const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
             current: pagination.current,
             pageSize: pagination.pageSize,
             total: pagination.total,
+            showSizeChanger: true,
+            pageSizeOptions: ["50", "100", "150", "200"],
+            defaultPageSize: 50,
             onChange: (page, pageSize) => {
               dispatch(fetchBookCatalogs({ page, pageSize }));
             },
           }}
+          scroll={{ x: 1500, y: 500 }}
           size="middle"
           loading={loading}
           bordered
@@ -702,11 +706,13 @@ const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
             pageSize: registrationPagination.pageSize,
             total: registrationPagination.total,
             showSizeChanger: true,
-            pageSizeOptions: ["10", "20", "50"],
+            pageSizeOptions: ["50", "100", "150", "200"],
+            defaultPageSize: 50,
             onChange: (page, pageSize) => {
               dispatch(fetchBookRegistrations({ page, pageSize }));
             },
           }}
+          scroll={{ x: 1500, y: 500 }}
           size="middle"
           bordered
           loading={loadingBookRegistrations}

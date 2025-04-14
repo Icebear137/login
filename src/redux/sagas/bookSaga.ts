@@ -25,8 +25,8 @@ function* fetchBookCatalogsSaga(
     const { filters, pagination } = state.book;
 
     const params = {
-      skip: ((pagination.current || 1) - 1) * (pagination.pageSize || 10),
-      take: pagination.pageSize || 10,
+      skip: ((pagination.current || 1) - 1) * (pagination.pageSize || 50),
+      take: pagination.pageSize || 50,
       searchKey: filters.searchKey || undefined,
       schoolPublishingCompanyId: filters.schoolPublishingCompanyId || undefined,
       languageId: filters.languageId || undefined,
@@ -79,8 +79,8 @@ function* fetchBookRegistrationsSaga(
     const params = {
       skip:
         ((registrationPagination.current || 1) - 1) *
-        (registrationPagination.pageSize || 10),
-      take: registrationPagination.pageSize || 10,
+        (registrationPagination.pageSize || 50),
+      take: registrationPagination.pageSize || 50,
       bookStatusId: registrationFilters.bookStatusId,
       ...(registrationFilters.bookTypeId && {
         bookTypeId: registrationFilters.bookTypeId,
