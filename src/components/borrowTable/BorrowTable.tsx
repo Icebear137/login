@@ -46,19 +46,25 @@ const BorrowTable = () => {
       return [];
     }
 
-    return apiRecords.map((record) => ({
-      id: record.id || 0,
-      borrowId: record.loanCode || "N/A",
-      cardNumber: record.cardNumber || "N/A",
-      name: record.fullName || "N/A",
-      class: record.schoolClassName || record.teacherGroupSubjectName || "N/A",
-      type: record.cardTypeName || "N/A",
-      borrowDate: formatDate(record.loanDate),
-      returnDate: formatDate(record.expiredDate),
-      booksCount: record.totalLoan || record.books?.length || 0,
-      returned: record.totalReturn || 0,
-      lost: record.totalLost || 0,
-    }));
+    try {
+      return apiRecords.map((record) => ({
+        id: record.id || 0,
+        borrowId: record.loanCode || "N/A",
+        cardNumber: record.cardNumber || "N/A",
+        name: record.fullName || "N/A",
+        class:
+          record.schoolClassName || record.teacherGroupSubjectName || "N/A",
+        type: record.cardTypeName || "N/A",
+        borrowDate: formatDate(record.loanDate),
+        returnDate: formatDate(record.expiredDate),
+        booksCount: record.totalLoan || record.books?.length || 0,
+        returned: record.totalReturn || 0,
+        lost: record.totalLost || 0,
+      }));
+    } catch (error) {
+      console.error("Error transforming API data:", error);
+      return [];
+    }
   };
 
   // Function to transform API data to book table format for flat structure
@@ -71,22 +77,27 @@ const BorrowTable = () => {
       return [];
     }
 
-    return bookRecords.map((book) => ({
-      id: book.id || 0,
-      registrationNumber: book.registrationNumber || "N/A",
-      loanCode: book.loanCode || "N/A",
-      title: book.title || "N/A",
-      authors: book.authors || "N/A",
-      publishingCompany: book.schoolPublishingCompanyName || "N/A",
-      publishYear: book.publishYear?.toString() || "N/A",
-      cardNumber: book.cardNumber || "N/A",
-      fullName: book.fullName || "N/A",
-      class: book.schoolClassName || book.teacherGroupSubjectName || "N/A",
-      cardType: book.cardTypeName || "N/A",
-      borrowDate: formatDate(book.loanDate),
-      expiredDate: formatDate(book.loanExpiredDate),
-      status: book.isReturn ? "Đã trả" : "Chưa trả",
-    }));
+    try {
+      return bookRecords.map((book) => ({
+        id: book.id || 0,
+        registrationNumber: book.registrationNumber || "N/A",
+        loanCode: book.loanCode || "N/A",
+        title: book.title || "N/A",
+        authors: book.authors || "N/A",
+        publishingCompany: book.schoolPublishingCompanyName || "N/A",
+        publishYear: book.publishYear?.toString() || "N/A",
+        cardNumber: book.cardNumber || "N/A",
+        fullName: book.fullName || "N/A",
+        class: book.schoolClassName || book.teacherGroupSubjectName || "N/A",
+        cardType: book.cardTypeName || "N/A",
+        borrowDate: formatDate(book.loanDate),
+        expiredDate: formatDate(book.loanExpiredDate),
+        status: book.isReturn ? "Đã trả" : "Chưa trả",
+      }));
+    } catch (error) {
+      console.error("Error transforming book data:", error);
+      return [];
+    }
   };
 
   // Helper function to format dates
@@ -677,6 +688,10 @@ const BorrowTable = () => {
             total: pagination.total,
             showSizeChanger: true,
             showTotal: (total) => `Tổng ${total} bản ghi`,
+            // Ensure total is consistent with data length
+            ...(Array.isArray(records) && {
+              total: Math.max(pagination.total, records.length),
+            }),
           }}
           onChange={handleTableChange}
           loading={loading}
@@ -709,6 +724,10 @@ const BorrowTable = () => {
             total: pagination.total,
             showSizeChanger: true,
             showTotal: (total) => `Tổng ${total} bản ghi`,
+            // Ensure total is consistent with data length
+            ...(Array.isArray(records) && {
+              total: Math.max(pagination.total, records.length),
+            }),
           }}
           onChange={handleTableChange}
           loading={loading}
