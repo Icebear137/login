@@ -201,9 +201,16 @@ const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
         0
       );
 
-      // Initialize borrowQuantity based on remaining allowed books
-      const initialQuantity =
-        totalCurrentQuantity < remainingBooksAllowed ? 1 : 0;
+      // Initialize borrowQuantity based on remaining allowed books and view mode
+      let initialQuantity = 0;
+
+      if (viewMode === "registration") {
+        // For registration view, always set quantity to 1 if possible
+        initialQuantity = totalCurrentQuantity < remainingBooksAllowed ? 1 : 0;
+      } else {
+        // For title view, set quantity based on remaining allowed books
+        initialQuantity = totalCurrentQuantity < remainingBooksAllowed ? 1 : 0;
+      }
 
       // Make sure to include all necessary fields based on the view mode
       const bookWithQuantity = {
@@ -226,6 +233,21 @@ const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
   };
 
   const handleQuantityChange = (bookId: string, quantity: number) => {
+    // If in registration view mode, always set quantity to 1 and don't allow changes
+    if (viewMode === "registration") {
+      // For registration view, quantity is always 1 if selected
+      const isSelected = selectedBooks.some((b) => b.id === bookId);
+      if (isSelected) {
+        // Ensure all selected books in registration mode have quantity 1
+        setSelectedBooks(
+          selectedBooks.map((book) =>
+            book.id === bookId ? { ...book, borrowQuantity: 1 } : book
+          )
+        );
+      }
+      return;
+    }
+
     // Find the book in the appropriate data source based on view mode
     let book;
     if (viewMode === "title") {
@@ -239,9 +261,9 @@ const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
     // Ensure quantity is valid (minimum 0, maximum available)
     let available = 1;
 
-    if (viewMode === "title" && "available" in book) {
+    if ("available" in book) {
       available = (book as BookInfo).available || 1;
-    } else if (viewMode === "registration") {
+    } else if ("bookStatusId" in book) {
       // For registration view, check bookStatusId (1 means available)
       const bookReg = book as BookRegistration;
       available = bookReg.bookStatusId === 1 ? 1 : 0;
@@ -485,35 +507,7 @@ const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
       key: "author",
       width: 150,
     },
-    {
-      title: "Số lượng mượn",
-      key: "borrowQuantity",
-      width: 120,
-      align: "center",
-      render: (_, record) => {
-        // Find the selected book if it exists
-        const selectedBook = selectedBooks.find((b) => b.id === record.id);
-        // Get the current quantity (default to 0)
-        const currentQuantity = selectedBook?.borrowQuantity || 0;
 
-        return (
-          <Input
-            type="number"
-            min={0}
-            max={record.available}
-            disabled={
-              !selectedBooks.some((b) => b.id === record.id) ||
-              record.available <= 0
-            }
-            value={currentQuantity}
-            onChange={(e) =>
-              handleQuantityChange(record.id, parseInt(e.target.value, 10))
-            }
-            style={{ width: 70 }}
-          />
-        );
-      },
-    },
     {
       title: "Tình trạng sách",
       key: "status",
