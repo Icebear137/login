@@ -150,6 +150,7 @@ const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
       resetFilters();
       dispatch(fetchBookCatalogs({ page: 1, pageSize: 10 }));
     }
+    // Không cần xóa selectedBooks khi chuyển viewmode để giữ trạng thái chọn sách
   };
 
   const handleSearchTitle = (value: string) => {
@@ -176,10 +177,26 @@ const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
   };
 
   const handleSelectBook = (book: BookInfo) => {
-    const isSelected = selectedBooks.some((b) => b.id === book.id);
+    // Kiểm tra xem sách đã được chọn dựa trên registrationNumber thay vì id
+    // Điều này giúp đồng bộ trạng thái chọn giữa hai viewmode
+    const bookRegistrationNumber = book.registrationNumber || "";
+    const isSelected = bookRegistrationNumber
+      ? selectedBooks.some(
+          (b) => b.registrationNumber === bookRegistrationNumber
+        )
+      : selectedBooks.some((b) => b.id === book.id);
 
     if (isSelected) {
-      setSelectedBooks(selectedBooks.filter((b) => b.id !== book.id));
+      // Xóa sách dựa trên registrationNumber nếu có, ngược lại dựa trên id
+      if (bookRegistrationNumber) {
+        setSelectedBooks(
+          selectedBooks.filter(
+            (b) => b.registrationNumber !== bookRegistrationNumber
+          )
+        );
+      } else {
+        setSelectedBooks(selectedBooks.filter((b) => b.id !== book.id));
+      }
     } else {
       // Check if adding this book would exceed the remaining allowed books
       const totalSelectedBooks = selectedBooks.reduce(
@@ -294,12 +311,30 @@ const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
     // Ensure quantity doesn't exceed available books
     const validQuantity = Math.min(quantity, available);
 
-    // Update the selected books with the new quantity
-    setSelectedBooks(
-      selectedBooks.map((book) =>
-        book.id === bookId ? { ...book, borrowQuantity: validQuantity } : book
-      )
-    );
+    // Tìm sách dựa trên id
+    const selectedBook = selectedBooks.find((b) => b.id === bookId);
+
+    if (selectedBook) {
+      // Nếu có registrationNumber, cập nhật tất cả sách có cùng registrationNumber
+      if (selectedBook.registrationNumber) {
+        setSelectedBooks(
+          selectedBooks.map((book) =>
+            book.registrationNumber === selectedBook.registrationNumber
+              ? { ...book, borrowQuantity: validQuantity }
+              : book
+          )
+        );
+      } else {
+        // Nếu không có registrationNumber, chỉ cập nhật sách có cùng id
+        setSelectedBooks(
+          selectedBooks.map((book) =>
+            book.id === bookId
+              ? { ...book, borrowQuantity: validQuantity }
+              : book
+          )
+        );
+      }
+    }
   };
 
   const handleBookTypeChange = (value: string) => {
@@ -371,7 +406,13 @@ const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
       width: 60,
       render: (_, record) => (
         <Checkbox
-          checked={selectedBooks.some((b) => b.id === record.id)}
+          checked={
+            record.registrationNumber
+              ? selectedBooks.some(
+                  (b) => b.registrationNumber === record.registrationNumber
+                )
+              : selectedBooks.some((b) => b.id === record.id)
+          }
           onChange={() => handleSelectBook(record)}
           disabled={record.available <= 0}
         />
@@ -424,8 +465,12 @@ const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
       className: "",
       align: "center",
       render: (_, record) => {
-        // Find the selected book if it exists
-        const selectedBook = selectedBooks.find((b) => b.id === record.id);
+        // Find the selected book if it exists, dựa trên registrationNumber hoặc id
+        const selectedBook = record.registrationNumber
+          ? selectedBooks.find(
+              (b) => b.registrationNumber === record.registrationNumber
+            )
+          : selectedBooks.find((b) => b.id === record.id);
         // Get the current quantity (default to 0)
         const currentQuantity = selectedBook?.borrowQuantity || 0;
 
@@ -435,7 +480,11 @@ const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
             min={0}
             max={record.available}
             disabled={
-              !selectedBooks.some((b) => b.id === record.id) ||
+              !(record.registrationNumber
+                ? selectedBooks.some(
+                    (b) => b.registrationNumber === record.registrationNumber
+                  )
+                : selectedBooks.some((b) => b.id === record.id)) ||
               record.available <= 0
             }
             value={currentQuantity}
@@ -477,7 +526,13 @@ const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
       align: "center",
       render: (_, record) => (
         <Checkbox
-          checked={selectedBooks.some((b) => b.id === record.id)}
+          checked={
+            record.registrationNumber
+              ? selectedBooks.some(
+                  (b) => b.registrationNumber === record.registrationNumber
+                )
+              : selectedBooks.some((b) => b.id === record.id)
+          }
           onChange={() => handleSelectBook(record)}
           disabled={record.available <= 0}
         />

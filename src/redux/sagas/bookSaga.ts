@@ -10,6 +10,9 @@ import {
   fetchBookRegistrations,
   fetchBookRegistrationsSuccess,
   fetchBookRegistrationsFailure,
+  fetchBookByRegistrationNumber,
+  fetchBookByRegistrationNumberSuccess,
+  fetchBookByRegistrationNumberFailure,
 } from "../slices/bookSlice";
 import { RootState } from "../store";
 import { bookService } from "@/services/bookService";
@@ -28,15 +31,11 @@ function* fetchBookCatalogsSaga(
       schoolPublishingCompanyId: filters.schoolPublishingCompanyId || undefined,
       languageId: filters.languageId || undefined,
       bookTypeId: filters.bookTypeId || undefined,
-      myBookTypeId: filters.myBookTypeId || undefined,
       schoolBookCategoryId: filters.schoolBookCategoryId || undefined,
       schoolCategoryId: filters.schoolCategoryId || undefined,
       fromDate: filters.fromDate || undefined,
       toDate: filters.toDate || undefined,
-      isGetBookAvailable:
-        filters.isGetBookAvailable !== null
-          ? filters.isGetBookAvailable
-          : undefined,
+      isGetBookAvailable: filters.isGetBookAvailable || undefined,
     };
 
     const response = yield call(bookService.getBookCatalog, params);
@@ -82,6 +81,7 @@ function* fetchBookRegistrationsSaga(
         ((registrationPagination.current || 1) - 1) *
         (registrationPagination.pageSize || 10),
       take: registrationPagination.pageSize || 10,
+      bookStatusId: registrationFilters.bookStatusId,
       ...(registrationFilters.bookTypeId && {
         bookTypeId: registrationFilters.bookTypeId,
       }),
@@ -109,8 +109,47 @@ function* fetchBookRegistrationsSaga(
   }
 }
 
+function* fetchBookByRegistrationNumberSaga(
+  action: PayloadAction<string>
+): Generator<any, void, any> {
+  try {
+    const registrationNumber = action.payload;
+
+    // Gọi API với cả registrationNumber trên URL và trong params
+    const response = yield call(
+      bookService.getBookbyRegistrationNumber,
+      registrationNumber,
+      {
+        registrationNumber: registrationNumber,
+      }
+    );
+
+    if (response) {
+      yield put(fetchBookByRegistrationNumberSuccess(response));
+    } else {
+      // Không hiển thị thông báo lỗi ở đây, chỉ dispatch action thôi
+      yield put(
+        fetchBookByRegistrationNumberFailure(
+          "Không tìm thấy sách với số đăng ký này"
+        )
+      );
+    }
+  } catch (error) {
+    // Không hiển thị thông báo lỗi ở đây, chỉ dispatch action thôi
+    yield put(
+      fetchBookByRegistrationNumberFailure(
+        error instanceof Error ? error.message : "Không thể tìm kiếm sách"
+      )
+    );
+  }
+}
+
 export function* bookSaga() {
   yield takeLatest(fetchBookCatalogs.type, fetchBookCatalogsSaga);
   yield takeLatest(fetchBookTypes.type, fetchBookTypesSaga);
   yield takeLatest(fetchBookRegistrations.type, fetchBookRegistrationsSaga);
+  yield takeLatest(
+    fetchBookByRegistrationNumber.type,
+    fetchBookByRegistrationNumberSaga
+  );
 }

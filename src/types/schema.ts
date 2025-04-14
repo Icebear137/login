@@ -630,8 +630,10 @@ export interface BookState {
   bookCatalogs: BookCatalog[];
   bookTypes: BookType[];
   bookRegistrations: BookRegistration[];
+  bookByRegistrationNumber: BookRegistration | null;
   loadingBookTypes: boolean;
   loadingBookRegistrations: boolean;
+  loadingBookByRegistrationNumber: boolean;
   loading: boolean;
   error: string | null;
   pagination: {

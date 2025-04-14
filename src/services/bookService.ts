@@ -43,10 +43,21 @@ export const bookService = {
       return [];
     }
   },
-  getBookbyRegistrationNumber: async (obj: any) => {
-    const response = await apiClient.post(`book/detail`, {
-      obj,
-    });
-    return response.data.data;
+  getBookbyRegistrationNumber: async (
+    registrationNumber: string,
+    params: any
+  ): Promise<BookRegistration> => {
+    try {
+      const response = await apiClient.get(
+        `/book/find-by-registration-number/${registrationNumber}`,
+        {
+          params,
+        }
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error("Error fetching book by registration number:", error);
+      throw error;
+    }
   },
 };
