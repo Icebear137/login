@@ -66,6 +66,7 @@ const UserPage: React.FC = () => {
 
   return (
     <div style={{ padding: "20px", maxWidth: "800px", margin: "0 auto" }}>
+      <Button onClick={() => router.push("/borrow-book")}>Mượn sách</Button>
       <Card
         title="Thông tin người dùng"
         extra={

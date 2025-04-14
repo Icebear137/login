@@ -19,6 +19,7 @@ export const authService = {
 
   logout: () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("selectedSchoolId");
     delete apiClient.defaults.headers.common["Authorization"];
   },
 };

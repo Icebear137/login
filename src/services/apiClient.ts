@@ -16,6 +16,13 @@ apiClient.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    // Get selectedSchoolId from localStorage
+    const selectedSchoolId = localStorage.getItem("selectedSchoolId");
+
+    // Use selectedSchoolId as orgid if available, otherwise use default
+    config.headers["orgid"] = selectedSchoolId;
+
     return config;
   },
   (error) => Promise.reject(error)

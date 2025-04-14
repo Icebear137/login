@@ -15,6 +15,10 @@ import storage from "redux-persist/lib/storage";
 import createSagaMiddleware from "redux-saga";
 import authReducer from "./slices/authSlice";
 import schoolReducer from "./slices/schoolSlice";
+import borrowReducer from "./slices/borrowSlice";
+import studentReducer from "./slices/studentSlice";
+import bookReducer from "./slices/bookSlice";
+import userReducer from "./slices/userSlice";
 import rootSaga from "./sagas";
 
 // Kiểm tra xem có đang ở môi trường client không để tránh lỗi khi chạy trên server
@@ -23,12 +27,16 @@ const isClient = typeof window !== "undefined";
 const persistConfig = {
   key: "root",
   storage,
-  whitelist: ["auth", "school"],
+  whitelist: ["auth", "school", "student"],
 };
 
 const rootReducer = combineReducers({
   auth: authReducer,
   school: schoolReducer,
+  borrow: borrowReducer,
+  student: studentReducer,
+  book: bookReducer,
+  user: userReducer,
 });
 
 // Chỉ sử dụng persist khi ở môi trường client

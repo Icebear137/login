@@ -1,8 +1,18 @@
+"use client";
+
 import { redirect } from "next/navigation";
+import { useEffect } from "react";
 
 export default function Home() {
-  redirect("/login");
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      window.location.href = "/borrow-book";
+    } else {
+      window.location.href = "/login";
+    }
+  }, []);
 
-  // Đảm bảo không render bất cứ thứ gì
-  return null;
+  // Show loading state while redirecting
+  return <div>Redirecting...</div>;
 }
