@@ -1,9 +1,19 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Modal, Input, Table, Button, Checkbox, Spin, Select, Tag } from "antd";
+import {
+  Modal,
+  Input,
+  Table,
+  Button,
+  Checkbox,
+  Select,
+  Tag,
+  Skeleton,
+  InputNumber,
+} from "antd";
 import { useMessage } from "@/components/MessageProvider";
-import { SearchOutlined, LoadingOutlined } from "@ant-design/icons";
+import { SearchOutlined } from "@ant-design/icons";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/redux/store";
 import {
@@ -475,8 +485,7 @@ const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
         const currentQuantity = selectedBook?.borrowQuantity || 0;
 
         return (
-          <Input
-            type="number"
+          <InputNumber
             min={0}
             max={record.available}
             disabled={
@@ -488,10 +497,11 @@ const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
               record.available <= 0
             }
             value={currentQuantity}
-            onChange={(e) =>
-              handleQuantityChange(record.id, parseInt(e.target.value, 10))
+            onChange={(value) =>
+              handleQuantityChange(record.id, value as number)
             }
             style={{ width: 70 }}
+            controls={true}
           />
         );
       },
@@ -646,7 +656,17 @@ const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
             placeholder="Tìm kiếm sách..."
             value={searchText}
             onChange={(e) => handleSearchTitle(e.target.value)}
-            suffix={loading ? <LoadingOutlined /> : <SearchOutlined />}
+            suffix={
+              loading ? (
+                <Skeleton.Button
+                  active
+                  size="small"
+                  style={{ width: "20px", height: "16px", minWidth: "auto" }}
+                />
+              ) : (
+                <SearchOutlined />
+              )
+            }
             className="w-full rounded-md"
             allowClear
           />
@@ -655,7 +675,17 @@ const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
               placeholder="Nhập số đăng ký cá biệt..."
               value={registrationNumber}
               onChange={(e) => handleSearchRegistrationNumber(e.target.value)}
-              suffix={loading ? <LoadingOutlined /> : <SearchOutlined />}
+              suffix={
+                loading ? (
+                  <Skeleton.Button
+                    active
+                    size="small"
+                    style={{ width: "20px", height: "16px", minWidth: "auto" }}
+                  />
+                ) : (
+                  <SearchOutlined />
+                )
+              }
               className="w-full rounded-md"
               allowClear
             />
@@ -664,9 +694,8 @@ const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
       </div>
 
       {loading && bookCatalogs.length === 0 ? (
-        <div className="flex flex-col justify-center items-center py-12 bg-white">
-          <Spin size="large" />
-          <div className="mt-2 text-gray-500">Đang tải dữ liệu...</div>
+        <div className="p-4 bg-white">
+          <Skeleton active paragraph={{ rows: 10 }} />
         </div>
       ) : viewMode === "title" ? (
         <Table
