@@ -36,6 +36,10 @@ import {
   sendBorrowRequest,
   resetBorrowRequestState,
 } from "@/redux/slices/borrowSlice";
+import {
+  fetchBookByRegistrationNumber,
+  clearBookByRegistrationNumber,
+} from "@/redux/slices/bookSlice";
 // Import fetchUserInfo from userSlice
 import { fetchUserInfo } from "@/redux/slices/userSlice";
 
@@ -122,6 +126,13 @@ const BorrowModal: React.FC<BorrowModalProps> = ({
   );
 
   const { userInfo } = useSelector((state: RootState) => state.user);
+
+  // Get book by registration number state
+  const {
+    bookByRegistrationNumber,
+    loadingBookByRegistrationNumber,
+    error: bookError,
+  } = useSelector((state: RootState) => state.book);
 
   // Get message API
   const messageApi = useMessage();
@@ -211,6 +222,69 @@ const BorrowModal: React.FC<BorrowModalProps> = ({
       messageApi.error(borrowError);
     }
   }, [borrowRequestSuccess, borrowError, handleFinish, onSuccess, messageApi]);
+
+  // Effect to handle book by registration number response
+  useEffect(() => {
+    // Chỉ xử lý khi có sự thay đổi về bookByRegistrationNumber hoặc bookError
+    if (bookByRegistrationNumber) {
+      // Kiểm tra trạng thái sách (bookStatusId = 1 là có thể mượn)
+      if (bookByRegistrationNumber.bookStatusId === 1) {
+        // Chuyển đổi dữ liệu sang định dạng BookItem
+        const newBook: BookItem = {
+          key: `book-${bookByRegistrationNumber.id}-0`,
+          title: bookByRegistrationNumber.title || "",
+          registrationNumber: bookByRegistrationNumber.registrationNumber || "",
+          author: bookByRegistrationNumber.authors || "",
+          status: "available",
+          publisher: bookByRegistrationNumber.schoolPublishingCompanyName || "",
+          publishYear: bookByRegistrationNumber.publishYear?.toString() || "",
+        };
+
+        // Kiểm tra xem sách đã có trong danh sách chưa
+        const existingBookIndex = bookData.findIndex(
+          (book) => book.registrationNumber === newBook.registrationNumber
+        );
+
+        if (existingBookIndex === -1) {
+          // Nếu sách chưa có trong danh sách, thêm vào
+          setBookData([...bookData, newBook]);
+          messageApi.success(
+            `Đã thêm sách "${newBook.title}" vào danh sách mượn`
+          );
+        } else {
+          messageApi.warning(
+            `Sách "${newBook.title}" đã có trong danh sách mượn`
+          );
+        }
+      } else {
+        // Sách không có sẵn để mượn
+        messageApi.error(
+          `Sách với số đăng ký ${registrationNumber} không có sẵn để mượn`
+        );
+      }
+
+      // Xóa dữ liệu sách đã tìm kiếm để chuẩn bị cho lần tìm kiếm tiếp theo
+      dispatch(clearBookByRegistrationNumber());
+      // Xóa giá trị trong ô input
+      setRegistrationNumber("");
+    } else if (bookError) {
+      // Chỉ hiển thị lỗi khi có bookError và không có bookByRegistrationNumber
+      messageApi.error(
+        `Không tìm thấy sách với số đăng ký ${registrationNumber}`
+      );
+      // Xóa dữ liệu lỗi để chuẩn bị cho lần tìm kiếm tiếp theo
+      dispatch(clearBookByRegistrationNumber());
+      // Xóa giá trị trong ô input
+      setRegistrationNumber("");
+    }
+  }, [
+    bookByRegistrationNumber,
+    bookError,
+    bookData,
+    registrationNumber,
+    messageApi,
+    dispatch,
+  ]);
 
   // Handle book selection
   const handleBookSelect = (books: BookInfo[]) => {
@@ -625,10 +699,26 @@ const BorrowModal: React.FC<BorrowModalProps> = ({
                     }
                     value={registrationNumber}
                     onChange={(e) => setRegistrationNumber(e.target.value)}
+                    onPressEnter={() => {
+                      if (registrationNumber && selectedCardId) {
+                        // Xóa lỗi trước khi tìm kiếm mới
+                        dispatch(clearBookByRegistrationNumber());
+                        // Gọi API tìm kiếm sách
+                        dispatch(
+                          fetchBookByRegistrationNumber(registrationNumber)
+                        );
+                      }
+                    }}
                     className="rounded-md"
                     disabled={!selectedCardId}
                     prefix={<MdBarcodeReader />}
-                    suffix={<BsUpcScan />}
+                    suffix={
+                      loadingBookByRegistrationNumber ? (
+                        <LoadingOutlined />
+                      ) : (
+                        <BsUpcScan />
+                      )
+                    }
                   />
                   <Button
                     icon={<PlusOutlined />}
@@ -894,8 +984,8 @@ const BorrowModal: React.FC<BorrowModalProps> = ({
         ]}
       >
         <p>
-          Bạn có chắc chắn muốn mượn {bookData.length} quyển sách cho độc giả{" "}
-          {fullName}?
+          Bạn có chắc chắn muốn cho mượn {bookData.length} quyển sách cho độc
+          giả {fullName}?
         </p>
         <p>Ngày mượn: {borrowDate?.format("DD/MM/YYYY")}</p>
         <p>Số phiếu mượn: {loanCode}</p>

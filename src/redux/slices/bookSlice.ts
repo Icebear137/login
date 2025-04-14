@@ -11,9 +11,11 @@ const initialState: BookState = {
   bookCatalogs: [],
   bookTypes: [],
   bookRegistrations: [],
+  bookByRegistrationNumber: null,
   loading: false,
   loadingBookTypes: false,
   loadingBookRegistrations: false,
+  loadingBookByRegistrationNumber: false,
   error: null,
   pagination: {
     current: 1,
@@ -30,7 +32,6 @@ const initialState: BookState = {
     schoolPublishingCompanyId: null,
     languageId: null,
     bookTypeId: null,
-    myBookTypeId: null,
     schoolBookCategoryId: null,
     schoolCategoryId: null,
     fromDate: null,
@@ -142,6 +143,32 @@ const bookSlice = createSlice({
         ...action.payload,
       };
     },
+    // Fetch book by registration number
+    fetchBookByRegistrationNumber: (state, action: PayloadAction<string>) => {
+      state.loadingBookByRegistrationNumber = true;
+      state.bookByRegistrationNumber = null;
+      state.error = null;
+    },
+    fetchBookByRegistrationNumberSuccess: (
+      state,
+      action: PayloadAction<BookRegistration>
+    ) => {
+      state.loadingBookByRegistrationNumber = false;
+      state.bookByRegistrationNumber = action.payload;
+      state.error = null;
+    },
+    fetchBookByRegistrationNumberFailure: (
+      state,
+      action: PayloadAction<string>
+    ) => {
+      state.loadingBookByRegistrationNumber = false;
+      state.bookByRegistrationNumber = null;
+      state.error = action.payload;
+    },
+    clearBookByRegistrationNumber: (state) => {
+      state.bookByRegistrationNumber = null;
+      state.error = null;
+    },
   },
 });
 
@@ -155,6 +182,10 @@ export const {
   fetchBookRegistrations,
   fetchBookRegistrationsSuccess,
   fetchBookRegistrationsFailure,
+  fetchBookByRegistrationNumber,
+  fetchBookByRegistrationNumberSuccess,
+  fetchBookByRegistrationNumberFailure,
+  clearBookByRegistrationNumber,
   updateBookFilters,
   updateBookPagination,
   updateRegistrationFilters,
