@@ -276,6 +276,13 @@ const ReaderSelectionModal: React.FC<ReaderSelectionModalProps> = ({
       onCancel={onCancel}
       width={1000}
       footer={null}
+      centered
+      style={{ top: 5 }}
+      modalRender={(modal) => (
+        <div style={{ maxHeight: "calc(100vh - 10px)", overflow: "auto" }}>
+          {modal}
+        </div>
+      )}
     >
       <div className="p-4 bg-gray-50 rounded-lg mb-6">
         <div className="text-lg font-medium mb-3 text-gray-700 border-b pb-2">

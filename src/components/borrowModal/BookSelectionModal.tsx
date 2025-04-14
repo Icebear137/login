@@ -595,6 +595,13 @@ const BookSelectionModal: React.FC<BookSelectionModalProps> = ({
       onCancel={handleModalCancel}
       width={1000}
       footer={null}
+      centered
+      style={{ top: 20 }}
+      modalRender={(modal) => (
+        <div style={{ maxHeight: "calc(100vh - 40px)", overflow: "auto" }}>
+          {modal}
+        </div>
+      )}
     >
       <div className="mb-4 space-y-4">
         <div className="grid grid-cols-2 gap-4">

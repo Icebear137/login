@@ -488,6 +488,12 @@ const BorrowModal: React.FC<BorrowModalProps> = ({
       width={1000}
       footer={null}
       centered
+      style={{ top: 20 }}
+      modalRender={(modal) => (
+        <div style={{ maxHeight: "calc(100vh - 40px)", overflow: "auto" }}>
+          {modal}
+        </div>
+      )}
     >
       {selectedCardId && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 animate__animated animate__fadeIn">
@@ -969,6 +975,13 @@ const BorrowModal: React.FC<BorrowModalProps> = ({
         title="Xác nhận mượn sách"
         open={confirmModalVisible}
         onCancel={handleCancelConfirm}
+        centered
+        style={{ top: 20 }}
+        modalRender={(modal) => (
+          <div style={{ maxHeight: "calc(100vh - 40px)", overflow: "auto" }}>
+            {modal}
+          </div>
+        )}
         footer={[
           <Button key="cancel" onClick={handleCancelConfirm}>
             Hủy
