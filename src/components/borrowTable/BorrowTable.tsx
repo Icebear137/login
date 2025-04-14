@@ -1,6 +1,15 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { Table, Select, Input, DatePicker, Button, Space, Tag } from "antd";
+import {
+  Table,
+  Select,
+  Input,
+  DatePicker,
+  Button,
+  Space,
+  Tag,
+  Tabs,
+} from "antd";
 import BorrowModal from "../borrowModal/BorrowModal";
 import LoanDetailModal from "./LoanDetailModal";
 import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
@@ -527,21 +536,21 @@ const BorrowTable = () => {
   return (
     <div className="p-4">
       <div className="flex justify-between items-center mb-4">
-        <Space>
-          <Button
-            type={viewMode === "loan" ? "primary" : "text"}
-            onClick={() => handleViewModeChange("loan")}
-            className={viewMode === "loan" ? "border-b-2 border-green-600" : ""}
-          >
-            Theo phiếu mượn
-          </Button>
-          <Button
-            type={viewMode === "book" ? "primary" : "text"}
-            onClick={() => handleViewModeChange("book")}
-            className={viewMode === "book" ? "border-b-2 border-green-600" : ""}
-          >
-            Theo đầu sách
-          </Button>
+        <div className="flex items-center">
+          <Tabs
+            activeKey={viewMode}
+            onChange={(key) => handleViewModeChange(key as "loan" | "book")}
+            items={[
+              {
+                key: "loan",
+                label: "Theo phiếu mượn",
+              },
+              {
+                key: "book",
+                label: "Theo đầu sách",
+              },
+            ]}
+          />
           <Space className="ml-4">
             <Button
               type="primary"
@@ -554,7 +563,7 @@ const BorrowTable = () => {
               Xóa bộ lọc
             </Button>
           </Space>
-        </Space>
+        </div>
         <Button
           type="primary"
           icon={<PlusOutlined />}
