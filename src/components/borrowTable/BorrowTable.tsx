@@ -572,8 +572,13 @@ const BorrowTable = () => {
           Lập phiếu mượn
         </Button>
       </div>
-      {filter && (
-        <div className="flex justify-between items-center mb-4">
+      <div
+        className={`overflow-hidden transition-all duration-300 ease-in-out ${
+          filter ? "max-h-[1000px] opacity-100 mb-4" : "max-h-0 opacity-0"
+        }`}
+        style={{ transform: filter ? "translateY(0)" : "translateY(-20px)" }}
+      >
+        <div className="flex justify-between items-center animate__animated animate__fadeIn">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 flex-1">
             <Select
               className="w-full"
@@ -665,17 +670,19 @@ const BorrowTable = () => {
                   onChange={(e) =>
                     handleSearchRegistrationNumber(e.target.value)
                   }
+                  allowClear
                 />
                 <Input
                   placeholder="Nhan đề sách"
                   value={filters.title}
                   onChange={(e) => handleSearchTitle(e.target.value)}
+                  allowClear
                 />
               </>
             )}
           </div>
         </div>
-      )}
+      </div>
 
       {viewMode === "loan" ? (
         <Table
