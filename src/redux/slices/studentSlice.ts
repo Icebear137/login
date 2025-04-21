@@ -102,6 +102,16 @@ const studentSlice = createSlice({
       state.error = action.payload;
     },
 
+    // Clear error
+    clearError: (state) => {
+      state.error = null;
+    },
+
+    // Clear student
+    clearStudent: (state) => {
+      state.selectedStudent = null;
+    },
+
     // Update filters
     updateFilters: (
       state,
@@ -198,6 +208,8 @@ export const {
   fetchStudentByCardNumber,
   fetchStudentByCardNumberSuccess,
   fetchStudentByCardNumberFailure,
+  clearError,
+  clearStudent,
   fetchGradeCodes,
   fetchGradeCodesSuccess,
   fetchGradeCodesFailure,

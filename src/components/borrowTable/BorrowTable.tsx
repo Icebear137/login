@@ -595,6 +595,7 @@ const BorrowTable = () => {
               placeholder="Nhập họ tên, mã thẻ"
               value={filters.searchKey}
               onChange={(e) => handleSearch(e.target.value)}
+              allowClear
             />
 
             <div className="flex space-x-2 gap-2">

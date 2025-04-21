@@ -11,12 +11,12 @@ import {
   Table,
   Space,
   Tag,
+  Skeleton,
 } from "antd";
 import { useMessage } from "@/components/MessageProvider";
 import {
   DeleteOutlined,
   PlusOutlined,
-  LoadingOutlined,
   IdcardOutlined,
   UserOutlined,
   TeamOutlined,
@@ -30,7 +30,11 @@ import type { ColumnsType } from "antd/es/table";
 import dayjs from "dayjs";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/redux/store";
-import { fetchStudentByCardNumber } from "@/redux/slices/studentSlice";
+import {
+  fetchStudentByCardNumber,
+  clearError,
+  clearStudent,
+} from "@/redux/slices/studentSlice";
 import {
   fetchLoanCode,
   sendBorrowRequest,
@@ -42,6 +46,7 @@ import {
 } from "@/redux/slices/bookSlice";
 // Import fetchUserInfo from userSlice
 import { fetchUserInfo } from "@/redux/slices/userSlice";
+import * as XLSX from "xlsx";
 
 interface BorrowModalProps {
   visible: boolean;
@@ -117,9 +122,11 @@ const BorrowModal: React.FC<BorrowModalProps> = ({
   const [readerForm] = Form.useForm();
 
   const dispatch = useDispatch();
-  const { selectedStudent, loading: studentLoading } = useSelector(
-    (state: RootState) => state.student
-  );
+  const {
+    selectedStudent,
+    loading: studentLoading,
+    error: studentError,
+  } = useSelector((state: RootState) => state.student);
 
   const { loanCode, loadingLoanCode } = useSelector(
     (state: RootState) => state.borrow
@@ -163,30 +170,103 @@ const BorrowModal: React.FC<BorrowModalProps> = ({
     } else {
       // Reset data when modal is closed
       resetReaderData();
+      dispatch(clearStudent()); // Xóa thông tin bạn đọc sau khi đóng modal
     }
   }, [visible, dispatch, resetReaderData]);
 
   // Update form state when student data is loaded
   useEffect(() => {
     if (selectedStudent) {
-      setFullName(selectedStudent.fullName);
-      setClassName(
-        selectedStudent.schoolClassName ||
-          selectedStudent.teacherGroupSubjectName ||
-          "N/A"
-      );
-      setCardStatus(
-        selectedStudent.cardStatus === 1
-          ? "active"
-          : selectedStudent.cardStatus === 2
-          ? "waiting"
-          : selectedStudent.cardStatus === 3
-          ? "banned"
-          : "other"
-      );
-      setExpiryDate(dayjs(selectedStudent.expireDate));
+      // Xử lý dựa trên cardStatus
+      if (selectedStudent.cardStatus === 1) {
+        // Thẻ đang lưu thông - có thể mượn sách
+        setFullName(selectedStudent.fullName);
+        setClassName(
+          selectedStudent.schoolClassName ||
+            selectedStudent.teacherGroupSubjectName ||
+            "N/A"
+        );
+        setCardStatus("active");
+        setExpiryDate(dayjs(selectedStudent.expireDate));
+
+        // Hiển thị thông báo thành công
+        messageApi.success(
+          `Đã tìm thấy thông tin bạn đọc: ${selectedStudent.fullName}`
+        );
+      } else if (selectedStudent.cardStatus === 2) {
+        // Thẻ chờ kích hoạt
+        setFullName(selectedStudent.fullName);
+        setClassName(
+          selectedStudent.schoolClassName ||
+            selectedStudent.teacherGroupSubjectName ||
+            "N/A"
+        );
+        setCardStatus("waiting");
+        setExpiryDate(dayjs(selectedStudent.expireDate));
+
+        // Hiển thị thông báo cảnh báo
+        messageApi.warning(
+          `Thẻ của bạn đọc ${selectedStudent.fullName} đang chờ kích hoạt, không thể mượn sách`
+        );
+
+        // Xóa thông tin thẻ sau 2 giây
+        setTimeout(() => {
+          resetReaderData();
+        }, 2000);
+      } else if (selectedStudent.cardStatus === 3) {
+        // Thẻ bị cấm mượn
+        setFullName(selectedStudent.fullName);
+        setClassName(
+          selectedStudent.schoolClassName ||
+            selectedStudent.teacherGroupSubjectName ||
+            "N/A"
+        );
+        setCardStatus("banned");
+        setExpiryDate(dayjs(selectedStudent.expireDate));
+
+        // Hiển thị thông báo lỗi
+        messageApi.error(
+          `Thẻ của bạn đọc ${selectedStudent.fullName} đang bị cấm mượn sách`
+        );
+
+        // Xóa thông tin thẻ sau 2 giây
+        setTimeout(() => {
+          resetReaderData();
+        }, 2000);
+      } else {
+        // Trạng thái khác
+        setFullName(selectedStudent.fullName);
+        setClassName(
+          selectedStudent.schoolClassName ||
+            selectedStudent.teacherGroupSubjectName ||
+            "N/A"
+        );
+        setCardStatus("other");
+        setExpiryDate(dayjs(selectedStudent.expireDate));
+
+        // Hiển thị thông báo cảnh báo
+        messageApi.warning(
+          `Thẻ của bạn đọc ${selectedStudent.fullName} có trạng thái không xác định`
+        );
+
+        // Xóa thông tin thẻ sau 2 giây
+        setTimeout(() => {
+          resetReaderData();
+        }, 2000);
+      }
     }
-  }, [selectedStudent]);
+  }, [selectedStudent, messageApi, resetReaderData]);
+
+  // Xử lý lỗi khi không tìm thấy thẻ
+  useEffect(() => {
+    if (studentError) {
+      messageApi.error(`Không tìm thấy thẻ với mã ${selectedCardId}`);
+      // Xóa giá trị trong ô input sau 1 giây
+      setTimeout(() => {
+        setSelectedCardId("");
+      }, 1000);
+    }
+  }, [studentError, messageApi, selectedCardId]);
 
   // Handle finish (close modal) - wrapped in useCallback to avoid dependency issues
   const handleFinish = useCallback(() => {
@@ -492,6 +572,44 @@ const BorrowModal: React.FC<BorrowModalProps> = ({
     setConfirmModalVisible(false);
   };
 
+  const generateAndDownloadExcel = () => {
+    // Tạo dữ liệu cho file Excel
+    const excelData = [
+      ["PHIẾU MƯỢN SÁCH"],
+      [""],
+      ["Số phiếu:", loanCode],
+      ["Ngày mượn:", borrowDate?.format("DD/MM/YYYY")],
+      [""],
+      ["Thông tin độc giả"],
+      ["Mã thẻ:", selectedCardId],
+      ["Họ và tên:", fullName],
+      [""],
+      ["Danh sách sách mượn"],
+      ["STT", "Số ĐKCB", "Nhan đề", "Tác giả"],
+      ...bookData.map((book, index) => [
+        index + 1,
+        book.registrationNumber,
+        book.title,
+        book.author,
+      ]),
+    ];
+
+    // Tạo workbook và worksheet
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(excelData);
+
+    // Tùy chỉnh style cho worksheet
+    ws["!merges"] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 3 } }, // Merge ô tiêu đề
+    ];
+
+    // Thêm worksheet vào workbook
+    XLSX.utils.book_append_sheet(wb, ws, "Phiếu mượn");
+
+    // Tải file về
+    XLSX.writeFile(wb, `Phieu_muon_${loanCode}.xlsx`);
+  };
+
   return (
     <Modal
       title="Lập phiếu mượn sách"
@@ -510,90 +628,92 @@ const BorrowModal: React.FC<BorrowModalProps> = ({
         </div>
       )}
     >
-      {selectedCardId && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 animate__animated animate__fadeIn">
-          <div className="bg-red-50 border border-red-100 rounded-lg p-4 shadow-sm transition-all hover:shadow-md">
-            <div className="flex items-center justify-between">
-              <div className="text-sm font-medium text-red-700">
-                Số sách đang mượn
+      {selectedStudent &&
+        selectedStudent.cardStatus === 1 &&
+        selectedCardId && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 animate__animated animate__fadeIn">
+            <div className="bg-red-50 border border-red-100 rounded-lg p-4 shadow-sm transition-all hover:shadow-md">
+              <div className="flex items-center justify-between">
+                <div className="text-sm font-medium text-red-700">
+                  Số sách đang mượn
+                </div>
+                <div className="bg-red-100 rounded-full p-2">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5 text-red-500"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z" />
+                  </svg>
+                </div>
               </div>
-              <div className="bg-red-100 rounded-full p-2">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5 text-red-500"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                >
-                  <path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z" />
-                </svg>
+              <div className="mt-3 text-2xl font-bold text-red-600">
+                {studentLoading ? (
+                  <Skeleton.Button active size="small" shape="round" />
+                ) : (
+                  selectedStudent?.totalBorrowingBooks || 0
+                )}
               </div>
             </div>
-            <div className="mt-3 text-2xl font-bold text-red-600">
-              {studentLoading ? (
-                <LoadingOutlined />
-              ) : (
-                selectedStudent?.totalBorrowingBooks || 0
-              )}
-            </div>
-          </div>
 
-          <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 shadow-sm transition-all hover:shadow-md">
-            <div className="flex items-center justify-between">
-              <div className="text-sm font-medium text-blue-700">
-                Số sách còn được mượn
+            <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 shadow-sm transition-all hover:shadow-md">
+              <div className="flex items-center justify-between">
+                <div className="text-sm font-medium text-blue-700">
+                  Số sách còn được mượn
+                </div>
+                <div className="bg-blue-100 rounded-full p-2">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5 text-blue-500"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z" />
+                  </svg>
+                </div>
               </div>
-              <div className="bg-blue-100 rounded-full p-2">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5 text-blue-500"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                >
-                  <path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z" />
-                </svg>
+              <div className="mt-3 text-2xl font-bold text-blue-600">
+                {studentLoading ? (
+                  <Skeleton.Button active size="small" shape="round" />
+                ) : (
+                  3 - (selectedStudent?.totalBorrowingBooks || 0)
+                )}
               </div>
             </div>
-            <div className="mt-3 text-2xl font-bold text-blue-600">
-              {studentLoading ? (
-                <LoadingOutlined />
-              ) : (
-                3 - (selectedStudent?.totalBorrowingBooks || 0)
-              )}
-            </div>
-          </div>
 
-          <div className="bg-green-50 border border-green-100 rounded-lg p-4 shadow-sm transition-all hover:shadow-md">
-            <div className="flex items-center justify-between">
-              <div className="text-sm font-medium text-green-700">
-                Số sách còn được mượn trên phiếu
+            <div className="bg-green-50 border border-green-100 rounded-lg p-4 shadow-sm transition-all hover:shadow-md">
+              <div className="flex items-center justify-between">
+                <div className="text-sm font-medium text-green-700">
+                  Số sách còn được mượn trên phiếu
+                </div>
+                <div className="bg-green-100 rounded-full p-2">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5 text-green-500"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
               </div>
-              <div className="bg-green-100 rounded-full p-2">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5 text-green-500"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                    clipRule="evenodd"
-                  />
-                </svg>
+              <div className="mt-3 text-2xl font-bold text-green-600">
+                {studentLoading ? (
+                  <Skeleton.Button active size="small" shape="round" />
+                ) : (
+                  3 -
+                  (selectedStudent?.totalBorrowingBooks || 0) -
+                  bookData.length
+                )}
               </div>
-            </div>
-            <div className="mt-3 text-2xl font-bold text-green-600">
-              {studentLoading ? (
-                <LoadingOutlined />
-              ) : (
-                3 -
-                (selectedStudent?.totalBorrowingBooks || 0) -
-                bookData.length
-              )}
             </div>
           </div>
-        </div>
-      )}
+        )}
 
       <div className="mt-6">
         <div className="flex flex-col md:flex-row gap-6 mb-6">
@@ -623,12 +743,46 @@ const BorrowModal: React.FC<BorrowModalProps> = ({
                     suffix={
                       <>
                         <BsUpcScan />
-                        {studentLoading ? <LoadingOutlined /> : <span />}
+                        {studentLoading ? (
+                          <Skeleton.Button
+                            active
+                            size="small"
+                            style={{
+                              width: "20px",
+                              height: "16px",
+                              minWidth: "auto",
+                            }}
+                          />
+                        ) : (
+                          <span />
+                        )}
                       </>
                     }
                     className="rounded-md"
                     allowClear={!!selectedCardId}
+                    onPressEnter={() => {
+                      if (selectedCardId) {
+                        // Xóa lỗi trước khi gọi API
+                        if (studentError) {
+                          dispatch(clearError());
+                        }
+                        // Gọi API để lấy thông tin bạn đọc
+                        dispatch(fetchStudentByCardNumber(selectedCardId));
+                      }
+                      if (selectedStudent) dispatch(clearStudent());
+                    }}
+                    onChange={(e) => {
+                      // Xóa lỗi khi người dùng bắt đầu nhập lại
+                      if (studentError) {
+                        dispatch(clearError());
+                      }
+                      setSelectedCardId(e.target.value);
+                    }}
                     onClear={() => {
+                      // Xóa lỗi khi xóa giá trị trong input
+                      if (studentError) {
+                        dispatch(clearError());
+                      }
                       setSelectedCardId("");
                       setFullName("");
                       setClassName("");
@@ -715,155 +869,205 @@ const BorrowModal: React.FC<BorrowModalProps> = ({
               </svg>
               Thông tin mượn
             </h3>
-            <Form layout="vertical">
-              <Form.Item label="Số đăng ký cá biệt" className="mb-3">
-                <div className="flex gap-2">
-                  <Input
-                    placeholder={
-                      !selectedCardId
-                        ? "Vui lòng chọn bạn đọc trước"
-                        : "Nhập số đăng ký hoặc chọn sách"
-                    }
-                    value={registrationNumber}
-                    onChange={(e) => setRegistrationNumber(e.target.value)}
-                    onPressEnter={() => {
-                      if (registrationNumber && selectedCardId) {
-                        // Kiểm tra số lượng sách được mượn
-                        const maxBorrowableBooks = 3;
-                        const currentBorrowedBooks =
-                          selectedStudent?.totalBorrowingBooks || 0;
-                        const remainingBooks =
-                          maxBorrowableBooks -
-                          currentBorrowedBooks -
-                          bookData.length;
+            {selectedStudent &&
+            selectedStudent.cardStatus === 1 &&
+            selectedCardId ? (
+              <Form layout="vertical">
+                <Form.Item label="Số đăng ký cá biệt" className="mb-3">
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder={
+                        !selectedCardId
+                          ? "Vui lòng chọn bạn đọc trước"
+                          : "Nhập số đăng ký hoặc chọn sách"
+                      }
+                      value={registrationNumber}
+                      onChange={(e) => setRegistrationNumber(e.target.value)}
+                      onPressEnter={() => {
+                        if (registrationNumber && selectedCardId) {
+                          // Kiểm tra số lượng sách được mượn
+                          const maxBorrowableBooks = 3;
+                          const currentBorrowedBooks =
+                            selectedStudent?.totalBorrowingBooks || 0;
+                          const remainingBooks =
+                            maxBorrowableBooks -
+                            currentBorrowedBooks -
+                            bookData.length;
 
-                        if (remainingBooks <= 0) {
-                          messageApi.error(
-                            `Bạn đọc đã mượn đủ ${maxBorrowableBooks} quyển sách, không thể mượn thêm`
+                          if (remainingBooks <= 0) {
+                            messageApi.error(
+                              `Bạn đọc đã mượn đủ ${maxBorrowableBooks} quyển sách, không thể mượn thêm`
+                            );
+                            setRegistrationNumber("");
+                            return;
+                          }
+
+                          // Xóa lỗi trước khi tìm kiếm mới
+                          dispatch(clearBookByRegistrationNumber());
+                          // Gọi API tìm kiếm sách
+                          dispatch(
+                            fetchBookByRegistrationNumber(registrationNumber)
                           );
-                          setRegistrationNumber("");
-                          return;
                         }
-
-                        // Xóa lỗi trước khi tìm kiếm mới
-                        dispatch(clearBookByRegistrationNumber());
-                        // Gọi API tìm kiếm sách
-                        dispatch(
-                          fetchBookByRegistrationNumber(registrationNumber)
-                        );
-                      }
-                    }}
-                    className="rounded-md"
-                    disabled={!selectedCardId}
-                    prefix={<MdBarcodeReader />}
-                    suffix={
-                      loadingBookByRegistrationNumber ? (
-                        <LoadingOutlined />
-                      ) : (
-                        <BsUpcScan />
-                      )
-                    }
-                  />
-                  <Button
-                    icon={<PlusOutlined />}
-                    className="flex items-center justify-center"
-                    onClick={() => {
-                      if (selectedCardId) {
-                        setBookModalVisible(true);
-                      }
-                    }}
-                    type="primary"
-                    disabled={!selectedCardId}
-                  />
-                </div>
-              </Form.Item>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Form.Item label="Số phiếu mượn" required className="mb-3">
-                    <Input
-                      placeholder="Đang tạo mã phiếu..."
-                      value={loanCode || ""}
-                      disabled
-                      prefix={<span className="text-gray-400 mr-1">#</span>}
-                      suffix={loadingLoanCode ? <LoadingOutlined /> : <span />}
-                      className="rounded-md bg-gray-50"
-                    />
-                  </Form.Item>
-                </div>
-
-                <div>
-                  <Form.Item label="Cán bộ thư viện" required className="mb-3">
-                    <Input
-                      placeholder="Đang tải thông tin..."
-                      value={
-                        librarian ||
-                        userInfo?.schoolInfos?.[0]?.libraryAdminName ||
-                        ""
-                      }
-                      onChange={(e) => setLibrarian(e.target.value)}
-                      className="rounded-md"
-                      disabled={true}
-                      prefix={
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-4 w-4 text-gray-400 mr-1"
-                          viewBox="0 0 20 20"
-                          fill="currentColor"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                      }
-                    />
-                  </Form.Item>
-                </div>
-
-                <div>
-                  <Form.Item label="Ngày Mượn" required className="mb-3">
-                    <DatePicker
-                      format="DD/MM/YYYY"
-                      value={borrowDate}
-                      onChange={(date) => setBorrowDate(date)}
-                      style={{ width: "100%" }}
-                      className="rounded-md"
-                      disabledDate={(current) => {
-                        // Disable dates after today
-                        return current && current > dayjs().endOf("day");
                       }}
-                      suffixIcon={
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-4 w-4 text-gray-400"
-                          viewBox="0 0 20 20"
-                          fill="currentColor"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
-                            clipRule="evenodd"
+                      className="rounded-md"
+                      disabled={!selectedCardId}
+                      prefix={<MdBarcodeReader />}
+                      suffix={
+                        loadingBookByRegistrationNumber ? (
+                          <Skeleton.Button
+                            active
+                            size="small"
+                            style={{
+                              width: "20px",
+                              height: "16px",
+                              minWidth: "auto",
+                            }}
                           />
-                        </svg>
+                        ) : (
+                          <BsUpcScan />
+                        )
                       }
                     />
-                  </Form.Item>
-                </div>
-
-                <div>
-                  <Form.Item label="Ghi chú" className="mb-3">
-                    <Input
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      className="rounded-md"
-                      placeholder="Nhập ghi chú nếu có..."
+                    <Button
+                      icon={<PlusOutlined />}
+                      className="flex items-center justify-center"
+                      onClick={() => {
+                        if (selectedCardId) {
+                          setBookModalVisible(true);
+                        }
+                      }}
+                      type="primary"
+                      disabled={!selectedCardId}
                     />
-                  </Form.Item>
+                  </div>
+                </Form.Item>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Form.Item label="Số phiếu mượn" required className="mb-3">
+                      <Input
+                        placeholder="Đang tạo mã phiếu..."
+                        value={loanCode || ""}
+                        disabled
+                        prefix={<span className="text-gray-400 mr-1">#</span>}
+                        suffix={
+                          loadingLoanCode ? (
+                            <Skeleton.Button
+                              active
+                              size="small"
+                              style={{
+                                width: "20px",
+                                height: "16px",
+                                minWidth: "auto",
+                              }}
+                            />
+                          ) : (
+                            <span />
+                          )
+                        }
+                        className="rounded-md bg-gray-50"
+                      />
+                    </Form.Item>
+                  </div>
+
+                  <div>
+                    <Form.Item
+                      label="Cán bộ thư viện"
+                      required
+                      className="mb-3"
+                    >
+                      <Input
+                        placeholder="Đang tải thông tin..."
+                        value={
+                          librarian ||
+                          userInfo?.schoolInfos?.[0]?.libraryAdminName ||
+                          ""
+                        }
+                        onChange={(e) => setLibrarian(e.target.value)}
+                        className="rounded-md"
+                        disabled={true}
+                        prefix={
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-4 w-4 text-gray-400 mr-1"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        }
+                      />
+                    </Form.Item>
+                  </div>
+
+                  <div>
+                    <Form.Item label="Ngày Mượn" required className="mb-3">
+                      <DatePicker
+                        format="DD/MM/YYYY"
+                        value={borrowDate}
+                        onChange={(date) => setBorrowDate(date)}
+                        style={{ width: "100%" }}
+                        className="rounded-md"
+                        disabledDate={(current) => {
+                          // Disable dates after today
+                          return current && current > dayjs().endOf("day");
+                        }}
+                        suffixIcon={
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-4 w-4 text-gray-400"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        }
+                      />
+                    </Form.Item>
+                  </div>
+
+                  <div>
+                    <Form.Item label="Ghi chú" className="mb-3">
+                      <Input
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        className="rounded-md"
+                        placeholder="Nhập ghi chú nếu có..."
+                      />
+                    </Form.Item>
+                  </div>
                 </div>
+              </Form>
+            ) : (
+              <div className="text-center py-4 text-gray-500">
+                <div className="mb-2">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-10 w-10 mx-auto text-gray-400"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                </div>
+                <p>Vui lòng chọn bạn đọc để hiển thị thông tin mượn</p>
               </div>
-            </Form>
+            )}
           </div>
         </div>
 
@@ -879,37 +1083,61 @@ const BorrowModal: React.FC<BorrowModalProps> = ({
             </svg>
             Danh sách tài liệu
           </h3>
-          <Table
-            columns={columns}
-            dataSource={bookData}
-            pagination={false}
-            locale={{
-              emptyText: (
-                <div className="py-5 text-center">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-10 w-10 mx-auto text-gray-400 mb-3"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-                    />
-                  </svg>
-                  <div className="text-gray-500">
-                    Chưa có sách nào được thêm vào phiếu mượn
+          {selectedStudent &&
+          selectedStudent.cardStatus === 1 &&
+          selectedCardId ? (
+            <Table
+              columns={columns}
+              dataSource={bookData}
+              pagination={false}
+              locale={{
+                emptyText: (
+                  <div className="py-5 text-center">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-10 w-10 mx-auto text-gray-400 mb-3"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+                      />
+                    </svg>
+                    <div className="text-gray-500">
+                      Chưa có sách nào được thêm vào phiếu mượn
+                    </div>
                   </div>
-                </div>
-              ),
-            }}
-            className="border border-gray-200 rounded-md overflow-hidden"
-            size="middle"
-            rowClassName="hover:bg-blue-50"
-          />
+                ),
+              }}
+              className="border border-gray-200 rounded-md overflow-hidden"
+              size="middle"
+              rowClassName="hover:bg-blue-50"
+            />
+          ) : (
+            <div className="text-center py-4 text-gray-500">
+              <div className="mb-2">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-10 w-10 mx-auto text-gray-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </div>
+              <p>Vui lòng chọn bạn đọc để thêm sách vào phiếu mượn</p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -939,7 +1167,10 @@ const BorrowModal: React.FC<BorrowModalProps> = ({
         <Space>
           <Button
             type="primary"
-            onClick={showConfirmModal}
+            onClick={async () => {
+              await handleBorrowSubmit(); // Xác nhận mượn trước
+              generateAndDownloadExcel(); // Sau đó tạo và tải Excel
+            }}
             className="bg-blue-600 hover:bg-blue-700 border-blue-600 px-4 h-10 flex items-center"
             icon={
               <svg

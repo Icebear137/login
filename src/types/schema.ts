@@ -133,6 +133,7 @@ export interface LoanDetail {
   note: string;
   cardNumber: string;
   fullName: string;
+  lenderName: string;
   schoolClassName?: string;
   teacherGroupSubjectName?: string;
   cardTypeName: string;

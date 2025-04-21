@@ -20,6 +20,7 @@ import {
 } from "@/redux/slices/borrowSlice";
 import type { ColumnsType } from "antd/es/table";
 import { LoanDetail } from "@/types/schema";
+import * as XLSX from "xlsx";
 
 const { Title } = Typography;
 
@@ -52,6 +53,83 @@ const LoanDetailModal: React.FC<LoanDetailModalProps> = ({
       }
     };
   }, [visible, loanId, dispatch]);
+
+  const generateAndDownloadExcel = () => {
+    if (!selectedLoan) return;
+
+    // Tạo dữ liệu cho file Excel
+    const excelData = [
+      ["SỞ GIÁO DỤC EDIT LẦN N"],
+      ["TRƯỜNG THCS XUÂN LA"],
+      [""],
+      ["PHIẾU MƯỢN SÁCH"],
+      [
+        `Ngày mượn: ${new Date(selectedLoan.loanDate).toLocaleDateString(
+          "vi-VN"
+        )}`,
+      ],
+      [
+        `Họ và tên người mượn: ${selectedLoan.fullName}                    Mã thẻ: ${selectedLoan.cardNumber}`,
+      ],
+      [
+        `Nhóm/lớp: ${
+          selectedLoan.schoolClassName ||
+          selectedLoan.teacherGroupSubjectName ||
+          ""
+        }`,
+      ],
+      [""],
+      ["STT", "Số ĐKCB", "Tên ấn phẩm", "Tên tác giả", "Ghi chú"],
+      ...selectedLoan.books.map((book, index) => [
+        index + 1,
+        book.registrationNumber,
+        book.title,
+        book.authors,
+        book.isLost ? "Làm mất" : book.isReturn ? "Đã trả" : "",
+      ]),
+      [""],
+      [""],
+      [""],
+      [
+        "                NGƯỜI MƯỢN",
+        "                                    PHỤ TRÁCH THƯ VIỆN",
+      ],
+      [""],
+      [""],
+      [
+        `                ${selectedLoan.fullName}`,
+        `                                    ${selectedLoan.lenderName}`,
+      ],
+    ];
+
+    // Tạo workbook và worksheet
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(excelData);
+
+    // Tùy chỉnh style cho worksheet
+    ws["!merges"] = [
+      { s: { r: 3, c: 0 }, e: { r: 3, c: 4 } }, // Merge "PHIẾU MƯỢN SÁCH"
+      { s: { r: 13, c: 0 }, e: { r: 13, c: 2 } }, // Merge "NGƯỜI MƯỢN"
+      { s: { r: 13, c: 3 }, e: { r: 13, c: 4 } }, // Merge "PHỤ TRÁCH THƯ VIỆN"
+      { s: { r: 16, c: 0 }, e: { r: 16, c: 2 } }, // Merge tên người mượn
+      { s: { r: 16, c: 3 }, e: { r: 16, c: 4 } }, // Merge tên thủ thư
+    ];
+
+    // Tùy chỉnh độ rộng cột
+    ws["!cols"] = [
+      { width: 5 }, // STT
+      { width: 15 }, // Số ĐKCB
+      { width: 40 }, // Tên ấn phẩm
+      { width: 20 }, // Tên tác giả
+      { width: 15 }, // Ghi chú
+    ];
+
+    // Thêm worksheet vào workbook
+    XLSX.utils.book_append_sheet(wb, ws, "Phiếu mượn");
+
+    // Tải file về
+    XLSX.writeFile(wb, `Phieu_muon_${selectedLoan.loanCode}.xlsx`);
+  };
 
   const handleCancel = () => {
     dispatch(clearSelectedLoan());
@@ -132,6 +210,7 @@ const LoanDetailModal: React.FC<LoanDetailModalProps> = ({
           </Button>
           <Button
             type="primary"
+            onClick={generateAndDownloadExcel}
             className="bg-blue-600 hover:bg-blue-700 border-blue-600 px-4 h-10 flex items-center"
             icon={
               <svg
@@ -327,7 +406,7 @@ const LoanDetailModal: React.FC<LoanDetailModalProps> = ({
                       className="mb-3"
                     >
                       <Input
-                        value="Trần Thị Thùy Diệu"
+                        value={selectedLoan.lenderName}
                         readOnly
                         disabled
                         prefix={
